@@ -11,7 +11,7 @@ import styled from 'styled-components';
 import { ThemedProps } from '@components/common';
 import useJira from '@v4/api/hooks/use-jira';
 import useTickets from '@v4/api/hooks/use-tickets';
-import { useModal } from '@v4/components/Modal';
+import { useModal } from '@v4/ui/modal';
 
 import SpotlightActions from './SpotlightActions';
 import SpotlightInput from './SpotlightInput';

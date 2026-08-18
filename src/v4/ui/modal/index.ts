@@ -2,8 +2,8 @@ export {
   ModalProvider,
   useModal,
   useModalParams,
-} from './ModalContext';
-export { MODAL_REGISTRY } from './registry';
+} from './modal-context';
+export { MODAL_REGISTRY } from './modal-registry';
 export {
   ModalKey,
   PreferencesSection,

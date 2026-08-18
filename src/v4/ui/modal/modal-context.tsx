@@ -14,7 +14,7 @@ import {
   ParamsFor,
 } from '@v4/types/modal';
 
-import ModalHost from './ModalHost';
+import ModalHost from './modal-host';
 
 const ModalContext = createContext<ModalContextValue | null>(null);
 

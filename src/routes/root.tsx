@@ -23,7 +23,7 @@ import { FlagName } from '@utils/flags';
 import useStore from '@utils/store';
 import { GlobalStyles } from '@utils/styles';
 import useTheme from '@utils/styles/colors';
-import RootContainer from '@v4/modules';
+import RootContainer from '@v4/ui/root-container';
 
 import '../App.css';
 

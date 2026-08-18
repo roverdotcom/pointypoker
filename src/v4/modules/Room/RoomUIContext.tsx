@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 
-import { ModalKey, useModal } from '@v4/components/Modal';
+import { ModalKey, useModal } from '@v4/ui/modal';
 
 type RoomUIContextValue = {
   closeTimeline: () => void;

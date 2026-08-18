@@ -9,9 +9,9 @@ import { useMobile } from '@utils/hooks/mobile';
 import useTheme from '@utils/styles/colors';
 import { DEFAULT_MODAL_SIZE, resolveDimension } from '@v4/types/modal';
 
-import { useModal } from './ModalContext';
-import ModalShell from './ModalShell';
-import { MODAL_REGISTRY } from './registry';
+import { useModal } from './modal-context';
+import { MODAL_REGISTRY } from './modal-registry';
+import ModalShell from './modal-shell';
 
 // Signature perspective/blur entry shared with the legacy modal and the setup route.
 const HIDDEN_STATE = {
