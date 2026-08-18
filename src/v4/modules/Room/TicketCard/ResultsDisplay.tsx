@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 
 import { ThemedProps } from '@components/common';
-import { CalculationResult } from '@v4/utils/calculations';
+import { CalculationResult } from '@v4/utilities/vote-calculations';
 
 const ResultsWrapper = styled.div`
   display: flex;

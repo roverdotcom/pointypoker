@@ -11,7 +11,7 @@ import { v4 as uuid } from 'uuid';
 import { isVoteCast } from '@modules/room/utils';
 import useStore from '@utils/store';
 import { ImportableIssue } from '@v4/types/jira';
-import { calculate, CalculationResult } from '@v4/utils/calculations';
+import { calculate, CalculationResult } from '@v4/utilities/vote-calculations';
 import Estimation from '@v4/types/estimation';
 import Issue from '@v4/types/issue';
 import Session from '@v4/types/session';
