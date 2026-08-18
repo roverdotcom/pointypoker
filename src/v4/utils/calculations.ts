@@ -1,5 +1,5 @@
 import { getPointOptions, PointingTypes } from '@modules/room/utils';
-import { PointScheme } from '@yappy/types/estimation';
+import { PointScheme } from '@v4/types/estimation';
 
 const EXCLUSIONS = new Set([
   '?',

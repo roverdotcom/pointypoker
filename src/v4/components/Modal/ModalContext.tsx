@@ -13,7 +13,7 @@ import {
   ModalContextValue,
   ModalKey,
   ParamsFor,
-} from './types';
+} from '@v4/types/modal';
 
 const ModalContext = createContext<ModalContextValue | null>(null);
 

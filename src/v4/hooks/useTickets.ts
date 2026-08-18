@@ -12,9 +12,9 @@ import { isVoteCast } from '@modules/room/utils';
 import useStore from '@utils/store';
 import { ImportableIssue } from '@v4/types/jira';
 import { calculate, CalculationResult } from '@v4/utils/calculations';
-import Estimation from '@yappy/types/estimation';
-import Issue from '@yappy/types/issue';
-import Session from '@yappy/types/session';
+import Estimation from '@v4/types/estimation';
+import Issue from '@v4/types/issue';
+import Session from '@v4/types/session';
 import { Participant } from '@yappy/types/user';
 
 import useData from './useData';

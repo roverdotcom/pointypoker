@@ -7,10 +7,10 @@ export { MODAL_REGISTRY } from './registry';
 export {
   ModalKey,
   PreferencesSection,
-} from './types';
+} from '@v4/types/modal';
 export type {
   ModalDefinition,
   ModalDimension,
   ModalParams,
   ModalSize,
-} from './types';
+} from '@v4/types/modal';

@@ -1,25 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
-
-import type { ExternalReference } from './external';
-
-type MessageData = {
-  authorId: string;
-  content: string;
-  createdAt: Timestamp;
-};
-
-type Issue = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
-  id: string;
-  name: string;
-  creatorId: string;
-  createdAt: Timestamp;
-  votingEndedAt: Timestamp | null;
-  calculatedValue?: string | number;
-  overrideValue?: string | number;
-  messages?: MessageData[];
-  external?: ExternalReference;
-};
-
-export default Issue;
+// Re-export shim — definition moved to @v4/types/issue during the v4 refactor.
+// Kept so legacy code importing via @yappy/types keeps working.
+export type { default } from '@v4/types/issue';

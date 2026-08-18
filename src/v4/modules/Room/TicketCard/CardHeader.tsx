@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 
 import { ThemedProps } from '@components/common';
-import Issue from '@yappy/types/issue';
+import Issue from '@v4/types/issue';
 
 const Header = styled.div`
   display: flex;

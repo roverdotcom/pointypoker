@@ -1,28 +1,4 @@
-import { Timestamp } from 'firebase/firestore';
-
-import { PointingSchemes } from '@modules/room/utils';
-
-type Estimation = {
-  id: string;
-  issueID: string;
-  userId: string;
-  value: string;
-  timestamp: Timestamp;
-};
-
-export const PointingSchemeOptions = [
-  PointingSchemes.fibonacci,
-  PointingSchemes.sequential,
-  PointingSchemes.tshirt,
-] as const;
-
-type PointScheme = {
-  scheme: typeof PointingSchemeOptions[number];
-  min?: number;
-  max?: number;
-  includeHalfPoints?: boolean;
-  halfPointMax?: number;
-};
-
-export default Estimation;
-export type { PointScheme };
+// Re-export shim — definition moved to @v4/types/estimation during the v4 refactor.
+// Kept so legacy code importing via @yappy/types keeps working.
+export { PointingSchemeOptions } from '@v4/types/estimation';
+export type { default, PointScheme } from '@v4/types/estimation';

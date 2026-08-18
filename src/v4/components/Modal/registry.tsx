@@ -1,6 +1,6 @@
 import Spotlight from '@v4/modules/Room/Spotlight';
 
-import { ModalDefinition, ModalKey } from './types';
+import { ModalDefinition, ModalKey } from '@v4/types/modal';
 
 /**
  * Placeholder for a modal whose content has not been migrated to v4 yet.

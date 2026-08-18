@@ -4,7 +4,7 @@ import { div as MotionDiv } from 'motion/react-client';
 import styled from 'styled-components';
 
 import { ThemedProps } from '@components/common';
-import Estimation from '@yappy/types/estimation';
+import Estimation from '@v4/types/estimation';
 import { Participant } from '@yappy/types/user';
 
 const StatusRow = styled.div`

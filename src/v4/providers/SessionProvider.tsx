@@ -15,7 +15,7 @@ import { serverTimestamp, Timestamp } from 'firebase/firestore';
 import generateRoomName from '@utils/room';
 import useAuth from '@v4/hooks/useAuth';
 import useData from '@v4/hooks/useData';
-import Session from '@yappy/types/session';
+import Session from '@v4/types/session';
 import { Participant } from '@yappy/types/user';
 
 const SESSIONS_COLLECTION = 'sessions';

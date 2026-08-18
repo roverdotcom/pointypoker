@@ -1,26 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
-
-import Estimation from '@yappy/types/estimation';
-
-import Issue from './issue';
-import { Participant } from './user';
-
-type Session = {
-  createdAt: Timestamp;
-  currentIssue: string | null;
-  estimations: { [userId: string]: Estimation };
-  expiresAt: Timestamp;
-  history: string[];
-  issues: {
-    [key: Issue['id']]: Issue;
-  };
-  name: string;
-  participants: {
-    [key: Participant['id']]: Participant;
-  };
-  // Ticket management is handled by ID reference
-  upcoming: string[];
-  // estimationSchema: EstimationSchema; <- to be defined later
-};
-
-export default Session;
+// Re-export shim — definition moved to @v4/types/session during the v4 refactor.
+// Kept so legacy code importing via @yappy/types keeps working.
+export type { default } from '@v4/types/session';

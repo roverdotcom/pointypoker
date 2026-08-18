@@ -1,7 +1,7 @@
 import type {
   IssueTypeRef,
   SprintRef,
-} from '@yappy/types/external';
+} from './external';
 
 /**
  * V4-native DTOs returned by the Jira data hook (`useJira`). Components consume
