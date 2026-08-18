@@ -1,6 +1,6 @@
 
-import V4Switcher from '@routes/v4Switcher';
 import { isV4Experience } from '@utils';
+import V4Switcher from '@v4/ui/routes/v4-switcher';
 
 import LegacySwitcher from './legacySwitcher';
 
