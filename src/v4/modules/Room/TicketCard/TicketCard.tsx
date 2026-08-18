@@ -1,7 +1,7 @@
 import { AnimatePresence } from 'motion/react';
 import { div as MotionDiv } from 'motion/react-client';
 
-import useTickets from '@v4/hooks/useTickets';
+import useTickets from '@v4/api/hooks/use-tickets';
 
 import CardActions from './CardActions';
 import CardHeader from './CardHeader';

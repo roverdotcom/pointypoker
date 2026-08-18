@@ -1,8 +1,8 @@
 import { useParams } from 'react-router';
 
-import useAuth from '@v4/hooks/useAuth';
-import useSession from '@v4/hooks/useSession';
-import SessionProvider from '@v4/providers/SessionProvider';
+import { SessionProvider } from '@v4/api';
+import useAuth from '@v4/api/hooks/use-auth';
+import useSession from '@v4/api/hooks/use-session';
 
 import Room from './room';
 import Setup from './setup';

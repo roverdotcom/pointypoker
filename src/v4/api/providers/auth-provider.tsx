@@ -8,15 +8,14 @@ import {
   type PropsWithChildren,
 } from 'react';
 
-import {
-  onAuthStateChanged,
-  signInAnonymously,
-  signOut as firebaseSignOut,
-} from 'firebase/auth';
-
 import useStore from '@utils/store';
 import createUserPayload from '@utils/user';
-import useFirebase from '@v4/hooks/useFirebase';
+import {
+  signInAnon,
+  signOutUser,
+  watchAuthState,
+} from '@v4/api/core/firebase/auth';
+import useFirebase from '@v4/api/hooks/use-firebase';
 import { User } from '@yappy/types';
 
 export type AuthStatus = 'initializing' | 'unauthenticated' | 'authenticated';
@@ -32,8 +31,8 @@ export type AuthContextValue = {
 export const Context = createContext<AuthContextValue | null>(null);
 
 /**
- * Single owner of v4 auth: one `onAuthStateChanged` listener, one derived
- * status, and the sign-in/out actions. `useAuth` is a thin reader of this.
+ * Single owner of v4 auth: one auth-state listener, one derived status, and the
+ * sign-in/out actions. `useAuth` is a thin reader of this.
  */
 const AuthProvider = ({ children }: PropsWithChildren): JSX.Element => {
   const { authClient, isAppInitialized } = useFirebase();
@@ -58,7 +57,7 @@ const AuthProvider = ({ children }: PropsWithChildren): JSX.Element => {
   useEffect(() => {
     if (!authClient) return;
 
-    return onAuthStateChanged(authClient, (firebaseUser) => {
+    return watchAuthState(authClient, (firebaseUser) => {
       if (!firebaseUser && userRef.current) {
         setPreference('user', null);
       }
@@ -68,7 +67,7 @@ const AuthProvider = ({ children }: PropsWithChildren): JSX.Element => {
   const signIn = useCallback(async (userName: string) => {
     if (!authClient) return;
 
-    const { user: firebaseUser } = await signInAnonymously(authClient);
+    const firebaseUser = await signInAnon(authClient);
     // Use the Firebase UID as the user id so it matches auth state.
     setPreference('user', {
       ...createUserPayload(userName),
@@ -80,7 +79,7 @@ const AuthProvider = ({ children }: PropsWithChildren): JSX.Element => {
     if (!authClient) return;
 
     // SessionProvider tears down the session when `user` becomes null.
-    await firebaseSignOut(authClient);
+    await signOutUser(authClient);
     setPreference('user', null);
   }, [authClient, setPreference]);
 

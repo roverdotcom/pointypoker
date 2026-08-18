@@ -9,9 +9,9 @@ import {
 import styled from 'styled-components';
 
 import { ThemedProps } from '@components/common';
+import useJira from '@v4/api/hooks/use-jira';
+import useTickets from '@v4/api/hooks/use-tickets';
 import { useModal } from '@v4/components/Modal';
-import useJira from '@v4/hooks/useJira';
-import useTickets from '@v4/hooks/useTickets';
 
 import SpotlightActions from './SpotlightActions';
 import SpotlightInput from './SpotlightInput';

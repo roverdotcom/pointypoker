@@ -3,7 +3,7 @@ import { useContext } from 'react';
 import {
   Context as AuthContext,
   type AuthContextValue,
-} from '@v4/providers/AuthProvider';
+} from '@v4/api/providers/auth-provider';
 
 const useAuth = (): AuthContextValue => {
   const context = useContext(AuthContext);

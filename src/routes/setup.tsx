@@ -20,8 +20,8 @@ import { Card } from '@mantine/core';
 import { LoadingIcon } from '@modules/preferences/panes/integrations/jira/components';
 import { useMobile } from '@utils/hooks/mobile';
 import { ThemedProps } from '@utils/styles/colors/types';
-import useAuth from '@v4/hooks/useAuth';
-import useSession from '@v4/hooks/useSession';
+import useAuth from '@v4/api/hooks/use-auth';
+import useSession from '@v4/api/hooks/use-session';
 
 const Wrapper = styled.div`
   display: flex;

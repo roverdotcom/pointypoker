@@ -7,26 +7,10 @@ import {
   useRef,
 } from 'react';
 
-import { BaseClient } from 'jira.js';
-import { Board, Sprint } from 'jira.js/agile';
-import { IssueFields, Issues } from 'jira.js/version3';
-
 import { JiraAuthData } from '@modules/integrations/jira/types';
 import useStore from '@utils/store';
-
-import { exchangeToken } from './jira.utils';
-
-class JiraClient extends BaseClient {
-  agile = {
-    board: new Board(this),
-    sprint: new Sprint(this),
-  };
-
-  v3 = {
-    fields: new IssueFields(this),
-    issues: new Issues(this),
-  };
-}
+import JiraClient from '@v4/api/core/jira/client';
+import { exchangeToken } from '@v4/api/core/jira/oauth';
 
 type JiraContextValue = {
   client: JiraClient | null;
@@ -106,5 +90,5 @@ const JiraProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export { useJiraContext, JiraClient };
+export { useJiraContext };
 export default JiraProvider;

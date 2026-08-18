@@ -5,8 +5,8 @@ import styled, { ThemeProvider } from 'styled-components';
 import { Theme } from '@radix-ui/themes';
 import { GlobalStyles } from '@utils/styles';
 import useTheme from '@utils/styles/colors';
+import { ServicesProvider } from '@v4/api';
 import { ModalProvider } from '@v4/components/Modal';
-import ServicesProvider from '@v4/providers';
 
 const Container = styled.div`
   display: flex;

@@ -2,7 +2,7 @@ import { AnimatePresence } from 'motion/react';
 
 import styled from 'styled-components';
 
-import useTickets from '@v4/hooks/useTickets';
+import useTickets from '@v4/api/hooks/use-tickets';
 
 import ControlBar from './ControlBar';
 import { RoomUIProvider, useRoomUI } from './RoomUIContext';

@@ -7,7 +7,16 @@ import {
 import { ROUTE_PATHS } from '@routes/constants';
 import { getJiraJsFixtures } from '@utils/jiraFixtures';
 import useStore from '@utils/store';
-import { useJiraContext } from '@v4/providers/JiraProvider';
+import {
+  toBoardOption,
+  toIssueDetail,
+  toSprintOption,
+  type RawBoard,
+  type RawIssue,
+  type RawSprint,
+} from '@v4/api/core/jira/mappers';
+import { exchangeToken } from '@v4/api/core/jira/oauth';
+import { useJiraContext } from '@v4/api/providers/jira-provider';
 import {
   BoardOption,
   ImportableIssue,
@@ -16,89 +25,7 @@ import {
   SprintOption,
 } from '@v4/types/jira';
 
-import { exchangeToken } from '../providers/jira.utils';
-
 const ATLASSIAN_API_URL = 'https://api.atlassian.com';
-
-/**
- * Minimal structural shapes for the parts of the jira.js / fixture responses we
- * actually read. Keeps the mapping honest without importing SDK model types.
- */
-type RawBoard = {
-  id?: number;
-  name?: string;
-};
-
-type RawSprint = {
-  id?: number;
-  name?: string;
-  state?: string;
-};
-
-type RawIssueSprint = {
-  goal?: string;
-  id?: number;
-  name?: string;
-  originBoardId?: number;
-  state?: string;
-};
-
-type RawIssueType = {
-  avatarId?: number;
-  iconUrl?: string;
-  id?: string;
-  name?: string;
-};
-
-type RawIssue = {
-  key?: string;
-  fields?: {
-    issuetype?: RawIssueType;
-    sprint?: RawIssueSprint;
-    summary?: string;
-  };
-};
-
-const toBoardOption = (board: RawBoard): BoardOption => ({
-  id: board.id ?? 0,
-  name: board.name ?? '',
-});
-
-const toSprintOption = (sprint: RawSprint): SprintOption => ({
-  id: sprint.id ?? 0,
-  name: sprint.name ?? '',
-  state: sprint.state,
-});
-
-const toIssueDetail = (issue: RawIssue, baseUrl: string): IssueDetail => {
-  const fields = issue.fields ?? {};
-  const issueType = fields.issuetype ?? {};
-  const key = issue.key ?? '';
-  const sprint = fields.sprint;
-
-  return {
-    iconUrl: issueType.iconUrl,
-    isParent: (issueType.name ?? '').toLowerCase() === 'epic',
-    key,
-    sprint: sprint
-      ? {
-        goal: sprint.goal,
-        id: sprint.id ?? 0,
-        name: sprint.name ?? '',
-        originBoardId: sprint.originBoardId,
-        state: sprint.state,
-      }
-      : undefined,
-    summary: fields.summary ?? key,
-    type: {
-      avatarId: issueType.avatarId,
-      iconUrl: issueType.iconUrl,
-      id: issueType.id ?? '',
-      name: issueType.name ?? '',
-    },
-    url: baseUrl ? `${baseUrl}/browse/${key}` : undefined,
-  };
-};
 
 const useJira = () => {
   const {

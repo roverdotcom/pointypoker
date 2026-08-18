@@ -9,7 +9,7 @@ import styled, { css } from 'styled-components';
 import { ThemedProps } from '@components/common';
 import { getPointOptions } from '@modules/room/utils';
 import useStore from '@utils/store';
-import useSession from '@v4/hooks/useSession';
+import useSession from '@v4/api/hooks/use-session';
 
 const VotingWrapper = styled.div`
   display: flex;

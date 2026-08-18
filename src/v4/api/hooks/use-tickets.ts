@@ -10,16 +10,16 @@ import { v4 as uuid } from 'uuid';
 
 import { isVoteCast } from '@modules/room/utils';
 import useStore from '@utils/store';
-import { ImportableIssue } from '@v4/types/jira';
-import { calculate, CalculationResult } from '@v4/utilities/vote-calculations';
 import Estimation from '@v4/types/estimation';
 import Issue from '@v4/types/issue';
+import { ImportableIssue } from '@v4/types/jira';
 import Session from '@v4/types/session';
+import { calculate, CalculationResult } from '@v4/utilities/vote-calculations';
 import { Participant } from '@yappy/types/user';
 
-import useData from './useData';
-import useJira from './useJira';
-import useSession from './useSession';
+import useData from './use-data';
+import useJira from './use-jira';
+import useSession from './use-session';
 
 const SESSIONS_COLLECTION = 'sessions';
 

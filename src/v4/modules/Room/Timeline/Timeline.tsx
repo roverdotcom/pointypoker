@@ -4,7 +4,7 @@ import styled from 'styled-components';
 
 import { ThemedProps } from '@components/common';
 import ZIndex from '@components/common/constants';
-import useTickets from '@v4/hooks/useTickets';
+import useTickets from '@v4/api/hooks/use-tickets';
 
 import { useRoomUI } from '../RoomUIContext';
 import TimelineDivider from './TimelineDivider';

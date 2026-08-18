@@ -8,12 +8,13 @@ import {
   useState,
 } from 'react';
 
-import ModalHost from './ModalHost';
 import {
   ModalContextValue,
   ModalKey,
   ParamsFor,
 } from '@v4/types/modal';
+
+import ModalHost from './ModalHost';
 
 const ModalContext = createContext<ModalContextValue | null>(null);
 

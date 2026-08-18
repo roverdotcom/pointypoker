@@ -5,8 +5,8 @@ import styled from 'styled-components';
 
 import { ThemedProps } from '@components/common';
 import ZIndex from '@components/common/constants';
-import useSession from '@v4/hooks/useSession';
-import useTickets from '@v4/hooks/useTickets';
+import useSession from '@v4/api/hooks/use-session';
+import useTickets from '@v4/api/hooks/use-tickets';
 
 import { useRoomUI } from '../RoomUIContext';
 import ProgressBar from './ProgressBar';

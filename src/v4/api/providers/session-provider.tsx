@@ -13,8 +13,8 @@ import { useNavigate } from 'react-router';
 import { serverTimestamp, Timestamp } from 'firebase/firestore';
 
 import generateRoomName from '@utils/room';
-import useAuth from '@v4/hooks/useAuth';
-import useData from '@v4/hooks/useData';
+import useAuth from '@v4/api/hooks/use-auth';
+import useData from '@v4/api/hooks/use-data';
 import Session from '@v4/types/session';
 import { Participant } from '@yappy/types/user';
 
@@ -94,7 +94,6 @@ const SessionProvider = ({ children, roomName }: Props): JSX.Element => {
 
     const sessionName = name ?? generateRoomName();
 
-    console.log('About to create');
     const hostParticipant: Participant = {
       consecutiveMisses: 0,
       id: user.id,
@@ -105,7 +104,6 @@ const SessionProvider = ({ children, roomName }: Props): JSX.Element => {
       name: user.name,
     };
 
-    console.log('HOST', hostParticipant);
     const newSession: Session = {
       createdAt: Timestamp.now(),
       currentIssue: null,
@@ -119,8 +117,6 @@ const SessionProvider = ({ children, roomName }: Props): JSX.Element => {
       upcoming: [],
     };
 
-    console.log('SESSION', newSession);
-
     try {
       await data.write(
         SESSIONS_COLLECTION,
@@ -128,9 +124,7 @@ const SessionProvider = ({ children, roomName }: Props): JSX.Element => {
         newSession,
       );
       subscribe(sessionName);
-      console.log('CREATED');
     } catch (err) {
-      console.log('SHIT', err);
       setError(err instanceof Error ? err.message : 'Failed to create session');
       setStatus('error');
       throw err;
