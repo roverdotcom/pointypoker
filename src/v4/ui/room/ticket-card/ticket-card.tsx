@@ -3,12 +3,12 @@ import { div as MotionDiv } from 'motion/react-client';
 
 import useTickets from '@v4/api/hooks/use-tickets';
 
-import CardActions from './CardActions';
-import CardHeader from './CardHeader';
-import CardShell from './CardShell';
-import ResultsDisplay from './ResultsDisplay';
-import VoteStatus from './VoteStatus';
-import VotingControls from './VotingControls';
+import CardActions from './card-actions';
+import CardHeader from './card-header';
+import CardShell from './card-shell';
+import ResultsDisplay from './results-display';
+import VoteStatus from './vote-status';
+import VotingControls from './voting-controls';
 
 const cardAnimation = {
   animate: {

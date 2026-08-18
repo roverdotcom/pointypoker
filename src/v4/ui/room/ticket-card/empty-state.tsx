@@ -4,7 +4,7 @@ import styled from 'styled-components';
 
 import { ThemedProps } from '@components/common';
 
-import { useRoomUI } from '../RoomUIContext';
+import { useRoomUI } from '../room-ui-context';
 
 const Wrapper = styled.div<ThemedProps>`
   display: flex;

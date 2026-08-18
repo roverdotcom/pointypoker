@@ -1,4 +1,4 @@
-import { RoomLayout } from '@v4/modules/Room';
+import { RoomLayout } from '@v4/ui/room';
 
 const Room = () => <RoomLayout />;
 

@@ -13,9 +13,9 @@ import useJira from '@v4/api/hooks/use-jira';
 import useTickets from '@v4/api/hooks/use-tickets';
 import { useModal } from '@v4/ui/modal';
 
-import SpotlightActions from './SpotlightActions';
-import SpotlightInput from './SpotlightInput';
-import SpotlightResults, { SpotlightResult } from './SpotlightResults';
+import SpotlightActions from './spotlight-actions';
+import SpotlightInput from './spotlight-input';
+import SpotlightResults, { SpotlightResult } from './spotlight-results';
 
 const JIRA_KEY_PATTERN = /^[A-Z][A-Z0-9]+-\d+$/i;
 

@@ -1,4 +1,4 @@
-import Spotlight from '@v4/modules/Room/Spotlight';
+import Spotlight from '@v4/ui/room/spotlight';
 import { ModalDefinition, ModalKey } from '@v4/types/modal';
 
 /**

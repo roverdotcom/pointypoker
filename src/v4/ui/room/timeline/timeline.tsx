@@ -6,9 +6,9 @@ import { ThemedProps } from '@components/common';
 import ZIndex from '@components/common/constants';
 import useTickets from '@v4/api/hooks/use-tickets';
 
-import { useRoomUI } from '../RoomUIContext';
-import TimelineDivider from './TimelineDivider';
-import TimelineItem from './TimelineItem';
+import { useRoomUI } from '../room-ui-context';
+import TimelineDivider from './timeline-divider';
+import TimelineItem from './timeline-item';
 
 const PanelWrapper = styled.div<ThemedProps>`
   background-color: ${({ theme }: ThemedProps) => theme.primary.accent2};

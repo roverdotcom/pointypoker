@@ -4,11 +4,11 @@ import styled from 'styled-components';
 
 import useTickets from '@v4/api/hooks/use-tickets';
 
-import ControlBar from './ControlBar';
-import { RoomUIProvider, useRoomUI } from './RoomUIContext';
-import TicketCard from './TicketCard';
-import EmptyState from './TicketCard/EmptyState';
-import Timeline from './Timeline';
+import ControlBar from './control-bar';
+import { RoomUIProvider, useRoomUI } from './room-ui-context';
+import TicketCard from './ticket-card';
+import EmptyState from './ticket-card/empty-state';
+import Timeline from './timeline';
 
 const LayoutWrapper = styled.div`
   display: flex;
