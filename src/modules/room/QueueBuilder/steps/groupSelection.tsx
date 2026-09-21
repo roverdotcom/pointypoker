@@ -25,6 +25,7 @@ import {
   GroupedIssues,
   IssueGroup,
 } from '@v4/types/issueGroup';
+import { isKanbanBoard } from '@v4/types/jira';
 import { Room } from '@yappy/types';
 
 import { InformationWrapper, SectionWrapper } from './common';
@@ -379,11 +380,13 @@ const GroupSelection = ({
     setGroup,
   ]);
 
+  const stepHeading = isKanbanBoard(boardType) ? 'Select issues to import' : 'Select a sprint';
+
   const loadingIcon = useMemo(() => groupData ? (
-    <h2>Select a sprint</h2>
+    <h2>{stepHeading}</h2>
   ) : (
     <LoadingWrapper size={2}><LoadingIcon /></LoadingWrapper>
-  ), [groupData]);
+  ), [groupData, stepHeading]);
 
   // An empty Kanban backlog resolves to a single group with no issues; without
   // an explicit message the user is left staring at zero-count rows.
