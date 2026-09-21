@@ -53,7 +53,7 @@ export type JiraBoard = {
 };
 
 export type JiraBoardConfig = {
-  estimation: {
+  estimation?: {
     field: {
       displayName: string;
       fieldId: string;
@@ -62,6 +62,7 @@ export type JiraBoardConfig = {
   };
   name: string;
   id: number;
+  type?: string;
 };
 
 /**

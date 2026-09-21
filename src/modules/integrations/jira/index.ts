@@ -414,7 +414,7 @@ const useJira = () => {
     try {
       const boardConfig = await getBoardConfiguration(boardId);
       const issueFields = await getIssueFields();
-      const estimationField = issueFields.find((field) => field.id === boardConfig.estimation.field.fieldId);
+      const estimationField = issueFields.find((field) => field.id === boardConfig.estimation?.field?.fieldId);
 
       if (estimationField) {
         return ({
