@@ -136,10 +136,20 @@ const closeModal = async (page: Page): Promise<void> => {
  * actionability retries race that removal.
  */
 const selectOption = async (locator: Locator): Promise<void> => {
+  // Wait for the element to actually be visible before measuring it: a
+  // `boundingBox()` taken too early (or against a detached/hidden element)
+  // returns `null`, and silently falling back to `(0, 0)` would reproduce the
+  // exact outside-click this helper exists to avoid — just further downstream
+  // and harder to diagnose (the modal would appear to vanish for no reason).
+  await locator.waitFor({ state: 'visible' });
   const box = await locator.boundingBox();
+  if (!box) {
+    throw new Error(`selectOption: could not measure bounding box for locator "${ locator }"`);
+  }
+
   await locator.dispatchEvent('click', {
-    clientX: (box?.x ?? 0) + (box?.width ?? 0) / 2,
-    clientY: (box?.y ?? 0) + (box?.height ?? 0) / 2,
+    clientX: box.x + box.width / 2,
+    clientY: box.y + box.height / 2,
   });
 };
 

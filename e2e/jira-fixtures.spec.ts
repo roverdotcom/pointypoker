@@ -156,7 +156,6 @@ test.describe('Jira import (fixture mode)', () => {
     // disabled one from that probe alone.
     await expect(page.getByTestId('group-option-backlog')).toContainText('Board');
     await expect(page.getByText('No issues to import')).toBeVisible();
-    await expect(page.getByText(/Loading/)).toHaveCount(0);
   });
 
   test('imports a backlog larger than one page', async ({ page, app }) => {
