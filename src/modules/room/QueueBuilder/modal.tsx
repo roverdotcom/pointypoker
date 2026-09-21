@@ -23,6 +23,7 @@ import { BACKLOG_GROUP_ID, BoardRef } from '@v4/types/issueGroup';
 
 import BoardSelection from './steps/boardSelection';
 import GroupSelection from './steps/groupSelection';
+import PointFieldSelection from './steps/pointFieldSelection';
 import TicketReview from './steps/ticketReview';
 // import ModeSelection, { ImportModeSelection } from './steps/modeSelection';
 
@@ -170,10 +171,8 @@ const QueueModal = () => {
   const [selectedGroup, setSelectedGroup] = useState<JiraIssueGroupWithIssues | null>(null);
   const [showOverrideUI, setShowOverrideUI] = useState<boolean>(false);
   const [pointField, setPointField] = useState<JiraField | null>(null);
-  // `pointFieldResolution` is read by the point-field picker landing in a follow-up change,
-  // which branches on `source` (not just a null field) to tell "no field yet" apart from
-  // "asked and genuinely unresolvable".
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // `pointFieldResolution` is read below to tell "no field yet" apart from "asked and
+  // genuinely unresolvable" — the latter is what triggers the point-field picker.
   const [pointFieldResolution, setPointFieldResolution] = useState<PointFieldResolution | null>(null);
   const isAnyBoardSelected = useMemo(() => !!defaultBoard || !!overrideBoard, [defaultBoard, overrideBoard]);
 
@@ -197,6 +196,10 @@ const QueueModal = () => {
           setShowOverrideUI={setShowOverrideUI}
         />
       );
+    }
+
+    if (!pointField && pointFieldResolution?.source === 'unresolved') {
+      return <PointFieldSelection onSelect={setPointField} />;
     }
 
     if (!selectedGroup && pointField) {
@@ -225,6 +228,7 @@ const QueueModal = () => {
     showOverrideUI,
     selectedGroup,
     pointField,
+    pointFieldResolution,
     defaultBoard,
     queue,
     board,
