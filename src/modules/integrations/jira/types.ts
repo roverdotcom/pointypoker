@@ -110,7 +110,7 @@ export type JiraIssueSearchPayload = {
   key: string;
   fields: {
     [key: string]: any;
-    sprint: JiraSprint;
+    sprint?: JiraSprint;
     issuetype: IssueType;
     summary: string;
   }
@@ -120,7 +120,7 @@ export type JiraIssueSearchPayload = {
 // Tickets are issues that are in this app's context.
 type JiraTicketBase = {
   url: string;
-  sprint: JiraSprint;
+  sprint?: JiraSprint;
   estimationFieldId: string;
   type: IssueType
   wasPointed?: boolean;

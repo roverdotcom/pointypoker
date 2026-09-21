@@ -62,7 +62,7 @@ const toIssuePayload = (seed: FixtureSeed,issue: FixtureIssue): JiraIssueSearchP
     : seed.sprints.find((s) => s.id === issue.sprintId);
   const pointField = resolvePointField(seed);
 
-  const fields = {
+  const fields: JiraIssueSearchPayload['fields'] = {
     issuetype: {
       avatarId: issue.issueType.avatarId,
       description: issue.issueType.description,
@@ -76,7 +76,7 @@ const toIssuePayload = (seed: FixtureSeed,issue: FixtureIssue): JiraIssueSearchP
     },
     ...(sprint ? { sprint: toJiraSprint(sprint) } : {}),
     summary: issue.summary,
-  } as JiraIssueSearchPayload['fields'];
+  };
 
   if (pointField) {
     fields[pointField.id] = issue.points;

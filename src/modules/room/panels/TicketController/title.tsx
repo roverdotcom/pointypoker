@@ -93,8 +93,13 @@ const Title = ({ shouldFocus, value }: Props) => {
   const [isLoading, setIsLoading] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { setIsFocused, preferredPointScheme } = useStore(({ preferences, setTitleInputFocus }) =>
+  const {
+    defaultBoard,
+    setIsFocused,
+    preferredPointScheme,
+  } = useStore(({ preferences, setTitleInputFocus }) =>
     ({
+      defaultBoard: preferences?.jiraPreferences?.defaultBoard,
       preferredPointScheme: preferences?.pointScheme,
       setIsFocused: setTitleInputFocus,
     }) );
@@ -108,13 +113,22 @@ const Title = ({ shouldFocus, value }: Props) => {
   const handleCreateNewJiraTicket = useCallback( async (ticketName: string) => {
     try {
       const ticketDetail = await getIssueDetail(ticketName);
-      const { field: pointField } = await getPointFieldFromBoardId(ticketDetail.fields.sprint.originBoardId);
+      const boardId = ticketDetail.fields.sprint?.originBoardId
+        ?? defaultBoard?.id;
+
+      // Resolution is best-effort: the ticket is still created without a point
+      // field (estimationFieldId falls back to '' exactly as it does today).
+      // Returning early here would silently create no ticket and leave the
+      // input spinning, because the ticket is constructed below this call.
+      const pointField = boardId
+        ? (await getPointFieldFromBoardId(boardId)).field
+        : null;
       const newTicket: QueuedJiraTicket = {
         estimationFieldId: pointField?.id ?? '',
         id: ticketDetail.key,
         name: ticketDetail.fields.summary,
         pointOptions: preferredPointScheme as PointScheme,
-        sprint: ticketDetail.fields.sprint,
+        ...(ticketDetail.fields.sprint ? { sprint: ticketDetail.fields.sprint } : {}),
         type: ticketDetail.fields.issuetype,
         url: buildJiraUrl(ticketDetail.key),
       };
@@ -126,6 +140,7 @@ const Title = ({ shouldFocus, value }: Props) => {
       handleCreateTicket(ticketName);
     }
   }, [
+    defaultBoard,
     getIssueDetail,
     preferredPointScheme,
     getPointFieldFromBoardId,

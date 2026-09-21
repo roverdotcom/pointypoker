@@ -304,7 +304,9 @@ const TicketReview = ({
         />
         <TicketInfo>
           <Title title={summary}>{summary}</Title>
-          <TicketSprintInfo>{key}&nbsp;&nbsp;•&nbsp;&nbsp;{issuetype.name} in {sprint.name}</TicketSprintInfo>
+          <TicketSprintInfo>
+            {key}&nbsp;&nbsp;•&nbsp;&nbsp;{issuetype.name}{sprint ? ` in ${sprint.name}` : ''}
+          </TicketSprintInfo>
         </TicketInfo>
       </IssueWrapper>
     );
