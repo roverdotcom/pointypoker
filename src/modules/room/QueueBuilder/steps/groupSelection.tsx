@@ -188,6 +188,7 @@ const GroupSelection = ({
   pointField,
 }: Props) => {
   const boardId = board?.id;
+  const boardType = board?.type;
   const previousBoardId = usePrevious(boardId);
   const [isLoading, setIsLoading] = useState(false);
   const [groupData, setGroupData] = useState<IssueGroup[] | null>(null);
@@ -211,9 +212,16 @@ const GroupSelection = ({
       // TODO: Handle error in the future
       console.error('Error fetching issue groups:', error);
     }
-    // `board` is often a fresh object literal, so key the identity on its id.
+    // `board` is often a fresh object literal, so key this callback on the board's
+    // scalar fields instead. Both `id` and `type` are listed: a board whose type
+    // resolves after first render must rebuild this callback, or the stale closure
+    // would send a Kanban board down the Scrum path.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boardId, getIssueGroupsForBoard]);
+  }, [
+    boardId,
+    boardType,
+    getIssueGroupsForBoard,
+  ]);
 
   const handleGetAvatars = useCallback(async () => {
     if (!groupedIssues?.some((entry) => entry.issues.length)) {
@@ -269,10 +277,12 @@ const GroupSelection = ({
     } finally {
       setIsLoading(false);
     }
-    // `board` is often a fresh object literal, so key the identity on its id.
+    // Keyed on the board's scalar fields rather than the object identity, for the
+    // same reason as `handleFetchGroupData` above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     boardId,
+    boardType,
     getImportableIssues,
     pointField,
   ]);
