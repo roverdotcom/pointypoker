@@ -10,6 +10,7 @@ import useStore from '@utils/store';
 import { useJiraContext } from '@v4/providers/JiraProvider';
 import {
   BoardOption,
+  BoardType,
   ImportableIssue,
   IssueDetail,
   PointField,
@@ -27,6 +28,7 @@ const ATLASSIAN_API_URL = 'https://api.atlassian.com';
 type RawBoard = {
   id?: number;
   name?: string;
+  type?: string;
 };
 
 type RawSprint = {
@@ -62,6 +64,7 @@ type RawIssue = {
 const toBoardOption = (board: RawBoard): BoardOption => ({
   id: board.id ?? 0,
   name: board.name ?? '',
+  type: board.type as BoardType | undefined,
 });
 
 const toSprintOption = (sprint: RawSprint): SprintOption => ({

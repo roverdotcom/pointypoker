@@ -1,3 +1,4 @@
+import { BoardType } from '@v4/types/jira';
 import { QueuedTicket, Ticket } from '@yappy/types/legacy/room';
 
 /**
@@ -42,6 +43,7 @@ export type JiraBoardPayloadValue = {
   id: number;
   name: string;
   self: string;
+  type?: BoardType;
 };
 
 export type JiraBoard = {

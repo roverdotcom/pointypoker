@@ -9,9 +9,21 @@ import type {
  * the SDK shape never leaks past the hook boundary.
  */
 
+/**
+ * Jira board types. `simple` means team-managed rather than Kanban, but those
+ * boards have no guaranteed sprint model, so this app routes them down the
+ * Kanban path. See the spec's "simple boards" limitation.
+ */
+export type BoardType = 'scrum' | 'kanban' | 'simple';
+
+/** Missing type defaults to Scrum so pre-existing stored boards keep working. */
+export const isKanbanBoard = (type?: BoardType): boolean =>
+  type === 'kanban' || type === 'simple';
+
 export type BoardOption = {
   id: number;
   name: string;
+  type?: BoardType;
 };
 
 /** The estimation field resolved for a board. */
