@@ -337,6 +337,58 @@ const useJira = () => {
       });
   };
 
+  const getBacklogForBoard = async (
+    boardId: string | number,
+    pointField?: JiraField | null,
+    startAt = 0,
+  ) => {
+    if (fixtures) return fixtures.getBacklogForBoard(
+      boardId,
+      pointField,
+      startAt,
+    );
+
+    const accessToken = await getJiraAccessToken();
+    const client = getJiraApiClient(API_URL, accessToken);
+    const path = buildUrl(URL_ACTIONS.GET_BACKLOG, {
+      boardId,
+      resourceId: resources?.id,
+    });
+
+    const fields = [
+      'id',
+      'key',
+      'sprint',
+      'summary',
+      'issuetype',
+      'components',
+      'team',
+    ];
+    // No sprint clause: the backlog endpoint is already scoped to issues not in
+    // an active or future sprint.
+    let jql = 'resolution IS EMPTY';
+
+    if (pointField) {
+      jql += ` AND ${ pointField.name } = EMPTY`;
+      fields.push(pointField.id);
+    }
+
+    return client({
+      method: 'GET',
+      params: {
+        fields: fields.join(','),
+        jql,
+        maxResults: 100,
+        startAt,
+      },
+      url: path,
+    })
+      .then((res): JiraIssuesDataPayload => res.data)
+      .catch((error) => {
+        throw new Error(error);
+      });
+  };
+
   const getIssueDetail = async (key: string, pointField?: JiraField | null) => {
     if (fixtures) return fixtures.getIssueDetail(key);
 
@@ -457,6 +509,7 @@ const useJira = () => {
     getAccessibleResources,
     getAccessTokenFromApi,
     getAvatars,
+    getBacklogForBoard,
     getBoardConfiguration,
     getBoards,
     getIssueDetail,

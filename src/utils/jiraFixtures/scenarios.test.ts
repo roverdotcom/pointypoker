@@ -67,3 +67,24 @@ describe('kanban fixture scenarios', () => {
     expect(secondPage.issues?.[0]?.key).not.toBe(firstPage.issues?.[0]?.key);
   });
 });
+
+describe('getBacklogForBoard fixtures', () => {
+  it('returns backlog issues for a board with a backlog', async () => {
+    const result = await getJiraJsFixtures('kanban-backlog').getBacklogForBoard(4);
+    expect(result.issues?.length).toBe(6);
+  });
+
+  it('returns nothing when the board has no backlog enabled', async () => {
+    const result = await getJiraJsFixtures('kanban-no-backlog').getBacklogForBoard(4);
+    expect(result.issues).toHaveLength(0);
+  });
+
+  it('filters to unpointed issues when a point field is supplied', async () => {
+    const pointField = {
+      id: 'customfield_10016',
+      name: 'Story Points',
+    };
+    const result = await getJiraJsFixtures('kanban-backlog').getBacklogForBoard(4, pointField);
+    expect(result.issues?.length).toBe(2);
+  });
+});

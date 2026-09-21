@@ -61,6 +61,31 @@ const toAgileIssue = (seed: FixtureSeed, issue: FixtureIssue) => ({
 });
 
 export const buildJiraJsFixtures = (seed: FixtureSeed) => ({
+  getBacklogForBoard: async (
+    boardId: number,
+    pointField?: JiraField | null,
+    startAt = 0,
+  ): Promise<AgileModels.SearchResults> => {
+    const board = seed.boards.find((b) => b.id === Number(boardId));
+    const backlog = board?.hasBacklog === false
+      ? []
+      : seed.issues.filter((issue) => issue.sprintId === null);
+    const issues = pointField
+      ? backlog.filter((issue) => issue.points === null)
+      : backlog;
+    const maxResults = 100;
+
+    return {
+      expand: 'schema,names',
+      issues: issues
+        .slice(startAt, startAt + maxResults)
+        .map((issue) => toAgileIssue(seed, issue)) as AgileModels.SearchResults['issues'],
+      maxResults,
+      startAt,
+      total: issues.length,
+    };
+  },
+
   getBoardConfiguration: async (boardId: number): Promise<AgileModels.GetConfiguration> => ({
     ...(seed.estimationFieldId
       ? {

@@ -28,6 +28,7 @@ export enum URL_ACTIONS {
   GET_BOARD_CONFIGURATION = 'get-board-configuration',
   GET_SPRINTS = 'get-sprints',
   GET_ISSUES_NO_JQL = 'get-issues-no-jql',
+  GET_BACKLOG = 'get-backlog',
 
   // JIRA API V2
   GET_FIELDS = 'get-fields',
@@ -102,6 +103,9 @@ const buildUrl = (action: URL_ACTIONS, options?: UrlOptions) => {
       break;
     case URL_ACTIONS.GET_ISSUES_NO_JQL:
       url = `${JIRA_PRE_PATH}/${resourceId}/${API_SPACE.AGILE_1}/board/${boardId}/issue`;
+      break;
+    case URL_ACTIONS.GET_BACKLOG:
+      url = `${JIRA_PRE_PATH}/${resourceId}/${API_SPACE.AGILE_1}/board/${boardId}/backlog`;
       break;
 
     // JIRA API V2

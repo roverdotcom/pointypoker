@@ -103,6 +103,31 @@ export const buildLegacyFixtures = (seed: FixtureSeed) => ({
       },
     }), {}),
 
+  getBacklogForBoard: async (
+    boardId: string | number,
+    pointField?: JiraField | null,
+    startAt = 0,
+  ): Promise<JiraIssuesDataPayload> => {
+    const board = seed.boards.find((b) => b.id === Number(boardId));
+    const backlog = board?.hasBacklog === false
+      ? []
+      : seed.issues.filter((issue) => issue.sprintId === null);
+    const issues = pointField
+      ? backlog.filter((issue) => issue.points === null)
+      : backlog;
+
+    return {
+      ...basePayload(
+        startAt,
+        issues.length,
+        100,
+      ),
+      issues: issues
+        .slice(startAt, startAt + 100)
+        .map((issue) => toIssuePayload(seed, issue)),
+    };
+  },
+
   getBoardConfiguration: async (boardId: string | number): Promise<JiraBoardConfig> => ({
     id: Number(boardId),
     name: seed.boards.find((b) => b.id === Number(boardId))?.name ?? 'Fixture Board',

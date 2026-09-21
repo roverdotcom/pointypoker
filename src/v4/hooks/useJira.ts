@@ -300,6 +300,54 @@ const useJira = () => {
     fixtureScenario,
   ]);
 
+  const getBacklogForBoard = useCallback(async (
+    boardId: number,
+    pointField?: PointField | null,
+    startAt = 0,
+  ): Promise<ImportableIssue[]> => {
+    if (useFixtures) {
+      const result = await getJiraJsFixtures(fixtureScenario).getBacklogForBoard(
+        boardId,
+        pointField,
+        startAt,
+      );
+      return (result.issues ?? []).map((issue) => toIssueDetail(issue as RawIssue, baseUrl));
+    }
+
+    if (!client) throw new Error('Jira client not initialized');
+
+    const fields = [
+      'id',
+      'key',
+      'sprint',
+      'summary',
+      'issuetype',
+      'components',
+      'team',
+    ];
+    let jql = 'resolution IS EMPTY';
+
+    if (pointField) {
+      jql += ` AND ${pointField.name} = EMPTY`;
+      fields.push(pointField.id);
+    }
+
+    const result = await client.agile.board.getIssuesForBacklog({
+      boardId,
+      fields,
+      jql,
+      maxResults: 100,
+      startAt,
+    });
+
+    return (result.issues ?? []).map((issue) => toIssueDetail(issue as RawIssue, baseUrl));
+  }, [
+    client,
+    baseUrl,
+    useFixtures,
+    fixtureScenario,
+  ]);
+
   const getIssueDetail = useCallback(async (key: string,pointField?: PointField | null): Promise<IssueDetail> => {
     if (useFixtures) {
       const issue = await getJiraJsFixtures(fixtureScenario).getIssueDetail(key);
@@ -371,6 +419,7 @@ const useJira = () => {
   return {
     buildJiraUrl,
     connectWithCode,
+    getBacklogForBoard,
     getBoards,
     getIssueDetail,
     getIssuesForBoard,
