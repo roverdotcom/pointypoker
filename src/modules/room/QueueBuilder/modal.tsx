@@ -215,7 +215,11 @@ const QueueModal = () => {
   useEffect(() => {
     if (isAnyBoardSelected) {
       getPointFieldFromBoardId(overrideBoard?.id || defaultBoard!.id)
-        .then((result) => setPointField(result.field));
+        .then((result) => setPointField(result.field))
+        .catch((error) => {
+          console.error('Error resolving point field:', error);
+          setPointField(null);
+        });
     }
   }, [
     defaultBoard,
