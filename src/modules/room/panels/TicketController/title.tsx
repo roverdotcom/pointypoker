@@ -108,7 +108,7 @@ const Title = ({ shouldFocus, value }: Props) => {
   const handleCreateNewJiraTicket = useCallback( async (ticketName: string) => {
     try {
       const ticketDetail = await getIssueDetail(ticketName);
-      const pointField = await getPointFieldFromBoardId(ticketDetail.fields.sprint.originBoardId);
+      const { field: pointField } = await getPointFieldFromBoardId(ticketDetail.fields.sprint.originBoardId);
       const newTicket: QueuedJiraTicket = {
         estimationFieldId: pointField?.id ?? '',
         id: ticketDetail.key,

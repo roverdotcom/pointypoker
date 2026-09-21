@@ -17,6 +17,7 @@ import {
 } from '@v4/types/issueGroup';
 import { BoardType, isKanbanBoard } from '@v4/types/jira';
 
+import { resolveBoardPointField } from './pointField';
 import {
   InitialAuth,
   JiraAuthData,
@@ -622,21 +623,14 @@ const useJira = () => {
       }), {}));
   };
 
-  const getPointFieldFromBoardId = async (boardId: number) => {
-    try {
-      const boardConfig = await getBoardConfiguration(boardId);
-      const issueFields = await getIssueFields();
-      const estimationField = issueFields.find((field) => field.id === boardConfig.estimation?.field?.fieldId);
+  const getPointFieldFromBoardId = async (boardId: number, preferred?: JiraField | null) => {
+    const [config, fields] = await Promise.all([getBoardConfiguration(boardId), getIssueFields()]);
 
-      if (estimationField) {
-        return ({
-          id: estimationField.id,
-          name: estimationField.name,
-        });
-      }
-    } catch (error) {
-      console.error('WHOOPS', error);
-    }
+    return resolveBoardPointField({
+      config,
+      fields: fields as JiraField[],
+      preferred,
+    });
   };
 
   const writePointValue = async (

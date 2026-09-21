@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 
+import { resolveBoardPointField } from '@modules/integrations/jira/pointField';
 import {
   JiraAuthData,
   JiraResourceData,
@@ -576,18 +577,14 @@ const useJira = () => {
     fixtureScenario,
   ]);
 
-  const getPointFieldFromBoardId = useCallback(async (boardId: number): Promise<PointField | undefined> => {
+  const getPointFieldFromBoardId = useCallback(async (boardId: number, preferred?: PointField | null) => {
     const [config, fields] = await Promise.all([getBoardConfiguration(boardId), getIssueFields()]);
 
-    const estimationFieldId = config.estimation?.field?.fieldId;
-    const match = (fields as PointField[]).find((field) => field.id === estimationFieldId);
-
-    if (!match) return undefined;
-
-    return {
-      id: match.id,
-      name: match.name,
-    };
+    return resolveBoardPointField({
+      config,
+      fields: fields as PointField[],
+      preferred,
+    });
   }, [getBoardConfiguration, getIssueFields]);
 
   /**
