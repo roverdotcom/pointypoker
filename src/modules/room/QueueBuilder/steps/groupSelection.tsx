@@ -14,28 +14,61 @@ import { fadeDownEntrance, spinAnimation } from '@components/common/animations';
 import { useJira } from '@modules/integrations';
 import {
   JiraField,
+  JiraIssueGroupWithIssues,
   JiraIssueSearchPayload,
-  JiraSprint,
-  JiraSprintWithIssues,
 } from '@modules/integrations/jira/types';
 import { usePrevious } from '@utils';
 import { ThemeColorKey, ThemedProps } from '@utils/styles/colors/types';
+import {
+  BacklogSource,
+  BoardRef,
+  GroupedIssues,
+  IssueGroup,
+} from '@v4/types/issueGroup';
 import { Room } from '@yappy/types';
 
 import { InformationWrapper, SectionWrapper } from './common';
 
 type Props = {
-  boardId?: string | number;
+  board?: BoardRef;
   existingQueue: Room[ 'ticketQueue' ];
-  setSprint: (sprintData: JiraSprintWithIssues) => void;
+  setGroup: (groupData: JiraIssueGroupWithIssues) => void;
   pointField: JiraField;
 };
 
-type SprintOptionProps = {
+type IssuesByGroup = GroupedIssues<JiraIssueSearchPayload>;
+
+type GroupOptionProps = {
   hasIssues: boolean;
   hasNewIssuesWithIssuesInQueue: boolean;
   delayFactor?: number;
 } & ThemedProps;
+
+/**
+ * Appends each incoming group's issues onto the matching group, deduplicating
+ * by issue id. Groups are matched by `groupId` — never by `fields.sprint` —
+ * because the API layer already tagged each issue with the group that produced
+ * it.
+ */
+const mergeGroupedIssues = (existing: IssuesByGroup | null, incoming: IssuesByGroup): IssuesByGroup => {
+  if (!existing) return incoming;
+
+  const merged = existing.map((entry) => ({ ...entry }));
+
+  incoming.forEach((entry) => {
+    const match = merged.find((candidate) => candidate.groupId === entry.groupId);
+
+    if (!match) {
+      merged.push({ ...entry });
+      return;
+    }
+
+    const fresh = entry.issues.filter((issue) => !match.issues.some((seen) => seen.id === issue.id));
+    match.issues = [...match.issues, ...fresh];
+  });
+
+  return merged;
+};
 
 const LoadingWrapper = styled.span<{ size: number }>`
   display: flex;
@@ -62,7 +95,7 @@ const LoadingIcon = styled(Spinner)`
   animation: ${spinAnimation} 1s linear infinite;
 `;
 
-const SprintOptionWrapper = styled.div`
+const GroupOptionWrapper = styled.div`
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -73,12 +106,12 @@ const SprintOptionWrapper = styled.div`
   border-radius: 0.5rem;
 `;
 
-const SprintOption = styled.div<SprintOptionProps>`
+const GroupOption = styled.div<GroupOptionProps>`
   ${({
     delayFactor,
     hasIssues,
     theme,
-  }: SprintOptionProps) => css`
+  }: GroupOptionProps) => css`
     cursor: ${ hasIssues ? 'pointer' : 'default' };
     background-color: ${ theme.greyscale[ hasIssues ? 'accent3' : 'accent2' ] };
     color: ${ theme.greyscale[hasIssues ? 'accent12' : 'accent11'] };
@@ -86,7 +119,7 @@ const SprintOption = styled.div<SprintOptionProps>`
     border-style: solid;
     border-color: ${ theme.greyscale[hasIssues ? 'accent7' : 'accent3'] };
     animation: ${ fadeDownEntrance } 0.25s ease-out ${ delayFactor }ms forwards;
-    
+
     &:hover {
       border-color: ${ theme.greyscale[hasIssues ? 'accent12' : 'accent3'] };
     }
@@ -102,18 +135,28 @@ const SprintOption = styled.div<SprintOptionProps>`
   justify-content: space-between;
   width: 100%;
 
-  transition: 
+  transition:
     background-color 0.25s ease-out,
     color 0.25s ease-out,
     border 0.25s ease-out;
 `;
 
-const PointContainer = styled.span<SprintOptionProps>`
+const EmptyStateMessage = styled.p`
+  ${({ theme }: ThemedProps) => css`
+    color: ${ theme.greyscale.accent11 };
+  `}
+
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+  text-align: center;
+`;
+
+const PointContainer = styled.span<GroupOptionProps>`
   ${({
     theme,
     hasIssues,
     hasNewIssuesWithIssuesInQueue,
-  }: SprintOptionProps) => {
+  }: GroupOptionProps) => {
     let colorScheme: ThemeColorKey = hasIssues ? 'success' : 'greyscale';
     if (hasNewIssuesWithIssuesInQueue) {
       colorScheme = 'info';
@@ -133,152 +176,141 @@ const PointContainer = styled.span<SprintOptionProps>`
   flex-direction: row;
   align-items: center;
 
-  transition: 
+  transition:
     color 0.25s ease-out,
     border 0.125s ease-out;
 `;
 
-const SprintSelection = ({
-  boardId,
+const GroupSelection = ({
+  board,
   existingQueue,
-  setSprint,
+  setGroup,
   pointField,
 }: Props) => {
+  const boardId = board?.id;
   const previousBoardId = usePrevious(boardId);
   const [isLoading, setIsLoading] = useState(false);
-  const [sprintData, setSprintData] = useState<JiraSprint[] | null>(null);
-  const [issueData, setIssueData] = useState<JiraIssueSearchPayload[] | null>(null);
+  const [groupData, setGroupData] = useState<IssueGroup[] | null>(null);
+  const [groupedIssues, setGroupedIssues] = useState<GroupedIssues<JiraIssueSearchPayload> | null>(null);
   const {
-    getSprintsForBoard,
-    getIssuesForBoard,
     getAvatars,
+    getImportableIssues,
+    getIssueGroupsForBoard,
   } = useJira();
 
-  const handleFetchSprintData = useCallback(async () => {
-    if (!boardId) {
+  const issueCount = groupedIssues?.reduce((acc, entry) => acc + entry.issues.length, 0) ?? 0;
+
+  const handleFetchGroupData = useCallback(async () => {
+    if (!board) return;
+
+    setIsLoading(true);
+
+    try {
+      setGroupData(await getIssueGroupsForBoard(board));
+    } catch (error) {
+      // TODO: Handle error in the future
+      console.error('Error fetching issue groups:', error);
+    }
+    // `board` is often a fresh object literal, so key the identity on its id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardId, getIssueGroupsForBoard]);
+
+  const handleGetAvatars = useCallback(async () => {
+    if (!groupedIssues?.some((entry) => entry.issues.length)) {
       return;
     }
 
-    setIsLoading(true);
-    // setIsError(false);
-
-    try {
-      const sprints = await getSprintsForBoard(boardId);
-      setSprintData(sprints.values as JiraSprint[]);
-    } catch (error) {
-      // TODO: Handle error in the future
-      console.error('Error fetching sprints:', error);
-      // setIsError(true);
-    }
-  }, [boardId, getSprintsForBoard]);
-
-  const handleGetAvatars = useCallback(async () => {
-    if (!issueData?.length) {
-      return [];
-    }
-
-    const avatarData = issueData?.reduce((acc: { [key: string]: number }, issue) => {
-      const { issuetype } = issue.fields;
-      if (!acc[issuetype.name]) {
-        acc[issuetype.name] = issuetype.avatarId;
-      }
-      return acc;
-    }, {});
+    const avatarData = groupedIssues
+      .flatMap((entry) => entry.issues)
+      .reduce((acc: { [key: string]: number }, issue) => {
+        const { issuetype } = issue.fields;
+        if (!acc[issuetype.name]) {
+          acc[issuetype.name] = issuetype.avatarId;
+        }
+        return acc;
+      }, {});
 
     try {
       const avatars = await getAvatars(avatarData);
 
-      setIssueData((existingIssueData) => {
-        if (!existingIssueData) {
-          return [];
-        }
-
-        return existingIssueData.map((issue) => {
+      setGroupedIssues((existing) => (existing ?? []).map((entry) => ({
+        ...entry,
+        issues: entry.issues.map((issue) => {
           const updatedIssue = cloneDeep(issue);
-          const { issuetype } = updatedIssue.fields;
-          const iconData = avatars[issuetype.name];
-          updatedIssue.fields.issuetype.icon = { ...iconData };
+          updatedIssue.fields.issuetype.icon = { ...avatars[updatedIssue.fields.issuetype.name] };
 
-          return { ...updatedIssue };
-        });
-      });
+          return updatedIssue;
+        }),
+      })));
     } catch (error) {
       console.error('Error fetching avatars:', error);
     }
+  }, [getAvatars, groupedIssues]);
 
-    setIsLoading(false);
-  }, [getAvatars, issueData]);
-
-  const handleFetchIssueData = useCallback(async (startAt = 0) => {
-    if (!boardId) {
-      return;
-    }
-
-    // setIsError(false);
+  const handleFetchIssueData = useCallback(async (startAt = 0, knownSource?: BacklogSource) => {
+    if (!board) return;
 
     try {
-      const issues = await getIssuesForBoard(
-        boardId as string,
+      const page = await getImportableIssues(
+        board,
         pointField,
         startAt,
+        knownSource,
       );
-      setIssueData((existingIssueData) => {
-        if (!existingIssueData) {
-          return [...issues.issues];
-        }
 
-        const newIssues = issues.issues.filter((issue) => {
-          return !existingIssueData.some((existingIssue) => existingIssue.id === issue.id);
-        });
+      setGroupedIssues((existing) => mergeGroupedIssues(existing, page.groups));
 
-        return [...existingIssueData, ...newIssues];
-      });
-
-      if (startAt < issues.total) {
-
-        handleFetchIssueData(startAt + issues.maxResults);
+      if (startAt + page.maxResults < page.total) {
+        handleFetchIssueData(startAt + page.maxResults, page.source);
         return;
       }
     } catch (error) {
-      console.error('Ahhh shit', error);
-      // setIsError(true);
+      console.error('Error fetching issues:', error);
+    } finally {
+      setIsLoading(false);
     }
+    // `board` is often a fresh object literal, so key the identity on its id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     boardId,
-    getIssuesForBoard,
+    getImportableIssues,
     pointField,
   ]);
 
   useEffect(() => {
     if (boardId && previousBoardId !== boardId) {
-      setSprintData(null);
-      setIssueData(null);
-      handleFetchSprintData();
+      setGroupData(null);
+      setGroupedIssues(null);
+      handleFetchGroupData();
       handleFetchIssueData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardId, previousBoardId]);
 
   useEffect(() => {
-    if (issueData?.length) {
+    if (issueCount) {
       handleGetAvatars();
     }
-  }, [handleGetAvatars, issueData?.length]);
+    // Deliberately keyed on the issue count alone: hydrating avatars replaces
+    // every issue object, so depending on `groupedIssues` here would make this
+    // effect retrigger itself forever.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [issueCount]);
 
-  const sprintOptions = useMemo(() => sprintData?.map((sprint, delayFactor) => {
-    const apiIssues = issueData?.filter((issue) => issue.fields.sprint?.id === sprint.id) ?? [];
+  const groupOptions = useMemo(() => groupData?.map((group, delayFactor) => {
+    const apiIssues = groupedIssues?.find((entry) => entry.groupId === group.id)?.issues ?? [];
     const issuesInQueue = existingQueue.filter((ticket) => {
       return apiIssues.some((issue) => issue.key === ticket.id);
     });
     const newIssueCount = apiIssues.length - issuesInQueue.length;
     const hasIssues = !!apiIssues.length && !!newIssueCount;
 
-    const handleSelectSprint = () => {
+    const handleSelectGroup = () => {
       const newIssues = apiIssues.filter((issue) => !issuesInQueue.some((ticket) => ticket?.id === issue.key));
 
       if (newIssues.length) {
-        setSprint({
-          ...sprint,
+        setGroup({
+          ...group,
           issues: newIssues,
         });
       }
@@ -297,62 +329,75 @@ const SprintSelection = ({
     } else {
       if (issuesInQueue.length) {
         if (newIssueCount > 0) {
-          // Issues in queue, but there are new issues in the sprint that aren't in the queue
+          // Issues in queue, but there are new issues in the group that aren't in the queue
           pointContainerMessage = `${issueCountDisplay} new unpointed ticket${ issuesInQueue.length === 1 ? '' : 's' }`;
         } else {
-          // Issues in queue, but they all match issues in sprint
+          // Issues in queue, but they all match issues in the group
           pointContainerMessage = 'Sprint already in queue';
         }
       } else if (newIssueCount > 0) {
-        // No issues in queue, issues in sprint
+        // No issues in queue, issues in the group
         pointContainerMessage = `${issueCountDisplay} unpointed ticket${apiIssues.length === 1 ? '' : 's'}`;
       } else {
-        // No issues in queue, no issues in sprint
+        // No issues in queue, no issues in the group
         pointContainerMessage = 'No unpointed tickets';
       }
     }
 
     return (
-      <SprintOption
-        key={sprint.id}
+      <GroupOption
+        key={group.id}
         hasIssues={hasIssues}
         hasNewIssuesWithIssuesInQueue={newIssueCount > 0 && issuesInQueue.length > 0}
         delayFactor={100 * delayFactor}
-        onClick={handleSelectSprint}
+        onClick={handleSelectGroup}
       >
-        {sprint.name}
+        {group.name}
         <PointContainer
           hasIssues={hasIssues}
           hasNewIssuesWithIssuesInQueue={newIssueCount > 0 && issuesInQueue.length > 0}
         >
           {pointContainerMessage}
         </PointContainer>
-      </SprintOption>
+      </GroupOption>
     );
   }), [
-    sprintData,
-    issueData,
+    groupData,
+    groupedIssues,
     existingQueue,
     isLoading,
-    setSprint,
+    setGroup,
   ]);
 
-  const loadingIcon = useMemo(() => sprintData ? (
+  const loadingIcon = useMemo(() => groupData ? (
     <h2>Select a sprint</h2>
   ) : (
     <LoadingWrapper size={2}><LoadingIcon /></LoadingWrapper>
-  ), [sprintData]);
+  ), [groupData]);
+
+  // An empty Kanban backlog resolves to a single group with no issues; without
+  // an explicit message the user is left staring at zero-count rows.
+  const emptyState = useMemo(() => {
+    if (isLoading || !groupData || issueCount) return null;
+
+    return <EmptyStateMessage>No issues to import</EmptyStateMessage>;
+  }, [
+    groupData,
+    isLoading,
+    issueCount,
+  ]);
 
   return (
     <SectionWrapper>
       <InformationWrapper>
         {loadingIcon}
       </InformationWrapper>
-      <SprintOptionWrapper>
-        {sprintOptions}
-      </SprintOptionWrapper>
+      <GroupOptionWrapper>
+        {groupOptions}
+        {emptyState}
+      </GroupOptionWrapper>
     </SectionWrapper>
   );
 };
 
-export default SprintSelection;
+export default GroupSelection;

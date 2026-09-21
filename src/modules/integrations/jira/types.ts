@@ -1,3 +1,4 @@
+import { IssueGroup } from '@v4/types/issueGroup';
 import { BoardType } from '@v4/types/jira';
 import { QueuedTicket, Ticket } from '@yappy/types/legacy/room';
 
@@ -148,8 +149,8 @@ export type JiraSprint = {
   goal: string
 };
 
-export type JiraSprintWithIssues = JiraSprint & {
-  issues?: JiraIssueSearchPayload[];
+export type JiraIssueGroupWithIssues = IssueGroup & {
+  issues: JiraIssueSearchPayload[];
 };
 
 /**

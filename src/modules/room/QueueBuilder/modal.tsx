@@ -13,14 +13,14 @@ import { useJira } from '@modules/integrations';
 import {
   JiraBoardPayloadValue,
   JiraField,
-  JiraSprintWithIssues,
+  JiraIssueGroupWithIssues,
 } from '@modules/integrations/jira/types';
 import { useTickets } from '@modules/room/hooks';
 import useStore from '@utils/store';
 import { ThemedProps } from '@utils/styles/colors/types';
 
 import BoardSelection from './steps/boardSelection';
-import SprintSelection from './steps/sprintSelection';
+import GroupSelection from './steps/groupSelection';
 import TicketReview from './steps/ticketReview';
 // import ModeSelection, { ImportModeSelection } from './steps/modeSelection';
 
@@ -164,7 +164,7 @@ const QueueModal = () => {
   const { queue } = useTickets();
   // const [ importModeSelection, setImportModeSelection ] = useState<ImportModeSelection | null>(null);
   const [overrideBoard, setOverrideBoard] = useState<JiraBoardPayloadValue | null>(null);
-  const [selectedSprint, setSelectedSprint] = useState<JiraSprintWithIssues | null>(null);
+  const [selectedSprint, setSelectedSprint] = useState<JiraIssueGroupWithIssues | null>(null);
   const [showOverrideUI, setShowOverrideUI] = useState<boolean>(false);
   const [pointField, setPointField] = useState<JiraField | null>(null);
   const isAnyBoardSelected = useMemo(() => !!defaultBoard || !!overrideBoard, [defaultBoard, overrideBoard]);
@@ -183,10 +183,10 @@ const QueueModal = () => {
 
     if (!selectedSprint && pointField) {
       return (
-        <SprintSelection
+        <GroupSelection
           existingQueue={queue}
-          boardId={overrideBoard?.id || defaultBoard?.id}
-          setSprint={setSelectedSprint}
+          board={{ id: overrideBoard?.id ?? defaultBoard!.id }}
+          setGroup={setSelectedSprint}
           pointField={pointField}
         />
       );
