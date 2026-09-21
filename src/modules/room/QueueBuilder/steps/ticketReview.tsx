@@ -225,7 +225,10 @@ const TicketReview = ({
         id: key,
         name: summary,
         pointOptions: pointScheme,
-        sprint,
+        // Kanban issues carry no sprint. Firestore's `updateDoc`/`arrayUnion`
+        // reject an explicit `undefined` value outright, so the key must be
+        // omitted entirely rather than set to `undefined`.
+        ...(sprint ? { sprint } : {}),
         type: { ...issuetype },
         url: buildJiraUrl(key),
       };

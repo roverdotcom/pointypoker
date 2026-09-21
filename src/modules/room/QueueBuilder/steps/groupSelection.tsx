@@ -20,6 +20,7 @@ import {
 import { usePrevious } from '@utils';
 import { ThemeColorKey, ThemedProps } from '@utils/styles/colors/types';
 import {
+  BACKLOG_GROUP_ID,
   BacklogSource,
   BoardRef,
   GroupedIssues,
@@ -358,6 +359,7 @@ const GroupSelection = ({
     return (
       <GroupOption
         key={group.id}
+        data-testid={`group-option-${group.id}`}
         hasIssues={hasIssues}
         hasNewIssuesWithIssuesInQueue={newIssueCount > 0 && issuesInQueue.length > 0}
         delayFactor={100 * delayFactor}
@@ -380,7 +382,14 @@ const GroupSelection = ({
     setGroup,
   ]);
 
-  const stepHeading = isKanbanBoard(boardType) ? 'Select issues to import' : 'Select a sprint';
+  // `board.type` may still be undefined for a stored board saved before board-type
+  // persistence existed — `getIssueGroupsForBoard` recovers the real type from board
+  // configuration internally, but that resolution never makes it back into the
+  // `board` prop. Reading it off the already-fetched groups (a Kanban board's single
+  // group always carries the synthetic `BACKLOG_GROUP_ID`) reflects what was actually
+  // fetched; `boardType` is kept only as a fallback for the brief pre-fetch instant.
+  const isKanbanGroup = groupData?.some((group) => group.id === BACKLOG_GROUP_ID) ?? isKanbanBoard(boardType);
+  const stepHeading = isKanbanGroup ? 'Select issues to import' : 'Select a sprint';
 
   const loadingIcon = useMemo(() => groupData ? (
     <h2>{stepHeading}</h2>

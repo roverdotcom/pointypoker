@@ -321,8 +321,19 @@ const kanbanBacklogSeed: FixtureSeed = {
 
 const hugeBacklogSeed: FixtureSeed = {
   ...kanbanBacklogSeed,
-  // 120 issues against a 100-item page size, so paging needs two requests.
-  issues: makeBacklogIssues(120, 4),
+  // 120 issues against a 100-item page size, so paging needs two requests. All
+  // are left unpointed: `getImportableIssues` filters backlog issues down to
+  // `pointField = EMPTY`, so a mixed pointed/unpointed set would shrink below
+  // the 100-item page size and never actually exercise the second request.
+  issues: makeBacklogIssues(120, 4).map((issue) => ({
+    ...issue,
+    points: null,
+  })),
+};
+
+const kanbanEmptySeed: FixtureSeed = {
+  ...kanbanBacklogSeed,
+  issues: [],
 };
 
 const kanbanNoBacklogSeed: FixtureSeed = {
@@ -378,6 +389,12 @@ export const SCENARIOS: Record<string, FixtureScenario> = {
     id: 'kanban-backlog',
     label: 'Kanban backlog',
     seed: kanbanBacklogSeed,
+  },
+  'kanban-empty': {
+    description: 'A Kanban board whose backlog has no issues at all.',
+    id: 'kanban-empty',
+    label: 'Kanban empty backlog',
+    seed: kanbanEmptySeed,
   },
   'kanban-no-backlog': {
     description: 'A Kanban board with the backlog feature disabled; work lives in board columns.',
