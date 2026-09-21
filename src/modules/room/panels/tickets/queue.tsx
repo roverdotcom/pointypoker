@@ -186,7 +186,7 @@ const Queue = () => {
             <TitleLinkIcon />
           </TicketId>
           <Title title={name}>{name}</Title>
-          <TicketSprintInfo>{sprint.name}</TicketSprintInfo>
+          {sprint && <TicketSprintInfo>{sprint.name}</TicketSprintInfo>}
         </TicketInfo>
       </IssueWrapper>
     );

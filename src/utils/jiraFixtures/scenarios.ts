@@ -2,6 +2,7 @@ import {
   JiraAuthData,
   JiraResourceData,
 } from '@modules/integrations/jira/types';
+import { BoardType } from '@v4/types/jira';
 
 /**
  * Shape-neutral fixture data for Jira mock mode.
@@ -31,6 +32,9 @@ export type FixtureSprint = {
 export type FixtureBoard = {
   id: number;
   name: string;
+  type: BoardType;
+  /** Kanban boards only: false means the backlog feature is disabled. */
+  hasBacklog?: boolean;
 };
 
 export type FixtureIssue = {
@@ -38,8 +42,8 @@ export type FixtureIssue = {
   key: string;
   summary: string;
   issueType: FixtureIssueType;
-  sprintId: number;
-  /** Current story-point value; `null` means unpointed. */
+  /** `null` means the issue sits in the backlog rather than a sprint. */
+  sprintId: number | null;
   points: number | null;
 };
 
@@ -54,7 +58,7 @@ export type FixtureSeed = {
   auth: JiraAuthData;
   boards: FixtureBoard[];
   /** The estimation field id returned by a board's configuration. */
-  estimationFieldId: string;
+  estimationFieldId?: string;
   fields: FixtureField[];
   sprints: FixtureSprint[];
   issues: FixtureIssue[];
@@ -190,18 +194,44 @@ const makeIssues = (
     };
   });
 
+const kanbanBoards: FixtureBoard[] = [
+  {
+    hasBacklog: true,
+    id: 4,
+    name: 'Support Kanban Board',
+    type: 'kanban',
+  },
+];
+
+/**
+ * Backlog issues carry no sprint. Alternates pointed / unpointed so the
+ * `pointField = EMPTY` filter is exercised.
+ */
+const makeBacklogIssues = (count: number, boardId: number): FixtureIssue[] =>
+  Array.from({ length: count }, (_, i) => ({
+    id: `${20000 + boardId * 100 + i}`,
+    issueType: ISSUE_TYPE_CYCLE[i % ISSUE_TYPE_CYCLE.length],
+    key: `KAN-${String(i + 1).padStart(2, '0')}`,
+    points: i % 3 === 0 ? null : ISSUE_POINTS[i % ISSUE_POINTS.length],
+    sprintId: null,
+    summary: SUMMARIES[i % SUMMARIES.length],
+  }));
+
 const boards: FixtureBoard[] = [
   {
     id: 1,
     name: 'Web App Board',
+    type: 'scrum',
   },
   {
     id: 2,
     name: 'Platform Board',
+    type: 'scrum',
   },
   {
     id: 3,
     name: 'Design Board',
+    type: 'scrum',
   },
 ];
 
@@ -279,12 +309,104 @@ const missingPointFieldSeed: FixtureSeed = {
   ],
 };
 
+const kanbanBacklogSeed: FixtureSeed = {
+  auth: AUTH,
+  boards: kanbanBoards,
+  estimationFieldId: POINT_FIELD.id,
+  fields: BASE_FIELDS,
+  issues: makeBacklogIssues(6, 4),
+  resource: RESOURCE,
+  sprints: [],
+};
+
+const hugeBacklogSeed: FixtureSeed = {
+  ...kanbanBacklogSeed,
+  // 120 issues against a 100-item page size, so paging needs two requests. All
+  // are left unpointed: `getImportableIssues` filters backlog issues down to
+  // `pointField = EMPTY`, so a mixed pointed/unpointed set would shrink below
+  // the 100-item page size and never actually exercise the second request.
+  issues: makeBacklogIssues(120, 4).map((issue) => ({
+    ...issue,
+    points: null,
+  })),
+};
+
+const kanbanEmptySeed: FixtureSeed = {
+  ...kanbanBacklogSeed,
+  issues: [],
+};
+
+const kanbanNoBacklogSeed: FixtureSeed = {
+  ...kanbanBacklogSeed,
+  boards: [
+    {
+      hasBacklog: false,
+      id: 4,
+      name: 'Support Kanban Board',
+      type: 'kanban',
+    },
+  ],
+};
+
+const kanbanNoEstimationSeed: FixtureSeed = {
+  ...kanbanBacklogSeed,
+  // No estimation block at all — the Kanban case the spec's point-field
+  // resolution ladder exists for.
+  estimationFieldId: undefined,
+  // BASE_FIELDS contains 'Story Points', which Task 6's name detection would
+  // resolve automatically — so the picker would never appear. Replace it with
+  // two ambiguously-named numeric fields so detection deliberately gives up.
+  fields: [
+    ...BASE_FIELDS.filter((field) => field.id !== POINT_FIELD.id),
+    {
+      custom: true,
+      id: 'customfield_10101',
+      name: 'Team Estimate',
+    },
+    {
+      custom: true,
+      id: 'customfield_10102',
+      name: 'Complexity',
+    },
+  ],
+};
+
 export const SCENARIOS: Record<string, FixtureScenario> = {
   'empty-board': {
     description: 'Boards exist but have no future sprints or issues.',
     id: 'empty-board',
     label: 'Empty board',
     seed: emptyBoardSeed,
+  },
+  'huge-backlog': {
+    description: 'A Kanban board with a 120-issue backlog, spanning two pages.',
+    id: 'huge-backlog',
+    label: 'Huge backlog',
+    seed: hugeBacklogSeed,
+  },
+  'kanban-backlog': {
+    description: 'A Kanban board with no sprints and a mixed pointed / unpointed backlog.',
+    id: 'kanban-backlog',
+    label: 'Kanban backlog',
+    seed: kanbanBacklogSeed,
+  },
+  'kanban-empty': {
+    description: 'A Kanban board whose backlog has no issues at all.',
+    id: 'kanban-empty',
+    label: 'Kanban empty backlog',
+    seed: kanbanEmptySeed,
+  },
+  'kanban-no-backlog': {
+    description: 'A Kanban board with the backlog feature disabled; work lives in board columns.',
+    id: 'kanban-no-backlog',
+    label: 'Kanban without backlog',
+    seed: kanbanNoBacklogSeed,
+  },
+  'kanban-no-estimation': {
+    description: 'A Kanban board whose configuration has no estimation field.',
+    id: 'kanban-no-estimation',
+    label: 'Kanban without estimation',
+    seed: kanbanNoEstimationSeed,
   },
   'large-sprint': {
     description: 'A single board with a future sprint of 40 issues.',
@@ -325,6 +447,6 @@ export const resolveIssue = (seed: FixtureSeed, key: string): FixtureIssue =>
     issueType: ISSUE_TYPES.story,
     key: key || 'FIX-000',
     points: null,
-    sprintId: seed.sprints[0]?.id ?? 0,
+    sprintId: seed.sprints[0]?.id ?? null,
     summary: 'Fixture placeholder issue',
   };

@@ -28,7 +28,9 @@ const toSprint = (sprint: FixtureSprint): AgileModels.Sprint => ({
 });
 
 const toIssueFields = (seed: FixtureSeed, issue: FixtureIssue) => {
-  const sprint = seed.sprints.find((s) => s.id === issue.sprintId) ?? seed.sprints[0];
+  const sprint = issue.sprintId === null
+    ? undefined
+    : seed.sprints.find((s) => s.id === issue.sprintId);
   const pointField = resolvePointField(seed);
 
   const fields: Record<string, unknown> = {
@@ -40,7 +42,7 @@ const toIssueFields = (seed: FixtureSeed, issue: FixtureIssue) => {
       name: issue.issueType.name,
       subtask: false,
     },
-    sprint: sprint ? toSprint(sprint) : null,
+    ...(sprint ? { sprint: toSprint(sprint) } : {}),
     summary: issue.summary,
   };
 
@@ -59,18 +61,47 @@ const toAgileIssue = (seed: FixtureSeed, issue: FixtureIssue) => ({
 });
 
 export const buildJiraJsFixtures = (seed: FixtureSeed) => ({
+  getBacklogForBoard: async (
+    boardId: number,
+    pointField?: JiraField | null,
+    startAt = 0,
+  ): Promise<AgileModels.SearchResults> => {
+    const board = seed.boards.find((b) => b.id === Number(boardId));
+    const backlog = board?.hasBacklog === false
+      ? []
+      : seed.issues.filter((issue) => issue.sprintId === null);
+    const issues = pointField
+      ? backlog.filter((issue) => issue.points === null)
+      : backlog;
+    const maxResults = 100;
+
+    return {
+      expand: 'schema,names',
+      issues: issues
+        .slice(startAt, startAt + maxResults)
+        .map((issue) => toAgileIssue(seed, issue)) as AgileModels.SearchResults['issues'],
+      maxResults,
+      startAt,
+      total: issues.length,
+    };
+  },
+
   getBoardConfiguration: async (boardId: number): Promise<AgileModels.GetConfiguration> => ({
-    estimation: {
-      field: {
-        displayName: resolvePointField(seed)?.name ?? 'Story Points',
-        fieldId: seed.estimationFieldId,
-      },
-      type: 'field',
-    },
+    ...(seed.estimationFieldId
+      ? {
+        estimation: {
+          field: {
+            displayName: resolvePointField(seed)?.name ?? 'Story Points',
+            fieldId: seed.estimationFieldId,
+          },
+          type: 'field',
+        },
+      }
+      : {}),
     id: Number(boardId),
     name: seed.boards.find((b) => b.id === Number(boardId))?.name ?? 'Fixture Board',
     self: `https://api.atlassian.com/rest/agile/1.0/board/${boardId}/configuration`,
-    type: 'scrum',
+    type: seed.boards.find((b) => b.id === Number(boardId))?.type ?? 'scrum',
   }),
 
   getBoards: async (maxResults = 25, name?: string): Promise<AgileModels.GetAllBoards> => {
@@ -88,7 +119,7 @@ export const buildJiraJsFixtures = (seed: FixtureSeed) => ({
         id: board.id,
         name: board.name,
         self: `https://api.atlassian.com/rest/agile/1.0/board/${board.id}`,
-        type: 'scrum',
+        type: board.type,
       })) as AgileModels.Board[],
     };
   },
@@ -124,11 +155,13 @@ export const buildJiraJsFixtures = (seed: FixtureSeed) => ({
     const issues = pointField
       ? seed.issues.filter((issue) => issue.points === null)
       : seed.issues;
+    const maxResults = 100;
+    const page = issues.slice(startAt, startAt + maxResults);
 
     return {
       expand: 'schema,names',
-      issues: issues.map((issue) => toAgileIssue(seed, issue)) as AgileModels.SearchResults['issues'],
-      maxResults: 100,
+      issues: page.map((issue) => toAgileIssue(seed, issue)) as AgileModels.SearchResults['issues'],
+      maxResults,
       startAt,
       total: issues.length,
     };

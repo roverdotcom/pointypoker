@@ -2,6 +2,7 @@ import {
   test as base,
   expect,
   type Browser,
+  type Locator,
   type Page,
 } from '@playwright/test';
 
@@ -120,6 +121,38 @@ const closeModal = async (page: Page): Promise<void> => {
   await page.getByTestId('modal-close').click();
 };
 
+/**
+ * Selects a list option (board / sprint / group / field) by dispatching a
+ * click at the element's real on-screen coordinates.
+ *
+ * A plain `locator.dispatchEvent('click')` synthesizes a `MouseEvent` whose
+ * `clientX`/`clientY` default to `(0, 0)`. The Jira import modal treats a
+ * click outside its bounds as a request to close itself
+ * (`src/modules/modal/index.tsx`'s `handleBackdropClick`), and — because the
+ * synthetic click bubbles all the way up to that backdrop handler — a
+ * `(0, 0)` click reads as "outside" and closes the modal out from under the
+ * test. `dispatchEvent` is still used (rather than `.click()`) because
+ * selecting an option often unmounts it immediately, and `.click()`'s
+ * actionability retries race that removal.
+ */
+const selectOption = async (locator: Locator): Promise<void> => {
+  // Wait for the element to actually be visible before measuring it: a
+  // `boundingBox()` taken too early (or against a detached/hidden element)
+  // returns `null`, and silently falling back to `(0, 0)` would reproduce the
+  // exact outside-click this helper exists to avoid — just further downstream
+  // and harder to diagnose (the modal would appear to vanish for no reason).
+  await locator.waitFor({ state: 'visible' });
+  const box = await locator.boundingBox();
+  if (!box) {
+    throw new Error(`selectOption: could not measure bounding box for locator "${ locator }"`);
+  }
+
+  await locator.dispatchEvent('click', {
+    clientX: box.x + box.width / 2,
+    clientY: box.y + box.height / 2,
+  });
+};
+
 export type AppHelpers = {
   signIn: typeof signIn;
   createRoom: typeof createRoom;
@@ -132,6 +165,7 @@ export type AppHelpers = {
   openMenu: typeof openMenu;
   openPreferences: typeof openPreferences;
   closeModal: typeof closeModal;
+  selectOption: typeof selectOption;
 };
 
 type Fixtures = {
@@ -152,6 +186,7 @@ export const test = base.extend<Fixtures>({
       openMenu,
       openPreferences,
       closeModal,
+      selectOption,
     });
   },
 });

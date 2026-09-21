@@ -57,7 +57,9 @@ const toJiraSprint = (sprint: FixtureSprint): JiraSprint => ({
 });
 
 const toIssuePayload = (seed: FixtureSeed,issue: FixtureIssue): JiraIssueSearchPayload => {
-  const sprint = seed.sprints.find((s) => s.id === issue.sprintId) ?? seed.sprints[0];
+  const sprint = issue.sprintId === null
+    ? undefined
+    : seed.sprints.find((s) => s.id === issue.sprintId);
   const pointField = resolvePointField(seed);
 
   const fields: JiraIssueSearchPayload['fields'] = {
@@ -72,7 +74,7 @@ const toIssuePayload = (seed: FixtureSeed,issue: FixtureIssue): JiraIssueSearchP
       id: issue.issueType.id,
       name: issue.issueType.name,
     },
-    sprint: sprint ? toJiraSprint(sprint) : (undefined as unknown as JiraSprint),
+    ...(sprint ? { sprint: toJiraSprint(sprint) } : {}),
     summary: issue.summary,
   };
 
@@ -101,16 +103,46 @@ export const buildLegacyFixtures = (seed: FixtureSeed) => ({
       },
     }), {}),
 
+  getBacklogForBoard: async (
+    boardId: string | number,
+    pointField?: JiraField | null,
+    startAt = 0,
+  ): Promise<JiraIssuesDataPayload> => {
+    const board = seed.boards.find((b) => b.id === Number(boardId));
+    const backlog = board?.hasBacklog === false
+      ? []
+      : seed.issues.filter((issue) => issue.sprintId === null);
+    const issues = pointField
+      ? backlog.filter((issue) => issue.points === null)
+      : backlog;
+
+    return {
+      ...basePayload(
+        startAt,
+        issues.length,
+        100,
+      ),
+      issues: issues
+        .slice(startAt, startAt + 100)
+        .map((issue) => toIssuePayload(seed, issue)),
+    };
+  },
+
   getBoardConfiguration: async (boardId: string | number): Promise<JiraBoardConfig> => ({
-    estimation: {
-      field: {
-        displayName: resolvePointField(seed)?.name ?? 'Story Points',
-        fieldId: seed.estimationFieldId,
-      },
-      type: 'field',
-    },
     id: Number(boardId),
     name: seed.boards.find((b) => b.id === Number(boardId))?.name ?? 'Fixture Board',
+    type: seed.boards.find((b) => b.id === Number(boardId))?.type ?? 'scrum',
+    ...(seed.estimationFieldId
+      ? {
+        estimation: {
+          field: {
+            displayName: resolvePointField(seed)?.name ?? 'Story Points',
+            fieldId: seed.estimationFieldId,
+          },
+          type: 'field',
+        },
+      }
+      : {}),
   }),
 
   getBoards: async (maxResults = 25, name?: string): Promise<JiraDataPayload> => {
@@ -129,6 +161,7 @@ export const buildLegacyFixtures = (seed: FixtureSeed) => ({
         id: board.id,
         name: board.name,
         self: `https://api.atlassian.com/rest/agile/1.0/board/${board.id}`,
+        type: board.type,
       })),
     };
   },
@@ -153,14 +186,16 @@ export const buildLegacyFixtures = (seed: FixtureSeed) => ({
     const issues = pointField
       ? seed.issues.filter((issue) => issue.points === null)
       : seed.issues;
+    const maxResults = 100;
+    const page = issues.slice(startAt, startAt + maxResults);
 
     return {
       ...basePayload(
         startAt,
         issues.length,
-        100,
+        maxResults,
       ),
-      issues: issues.map((issue) => toIssuePayload(seed, issue)),
+      issues: page.map((issue) => toIssuePayload(seed, issue)),
     };
   },
 

@@ -10,17 +10,21 @@ import PencilSvg from '@assets/icons/pencil.svg?react';
 import UndoSvg from '@assets/icons/undo.svg?react';
 import { scaleEntrance } from '@components/common/animations';
 import { useJira } from '@modules/integrations';
+import { PointFieldResolution } from '@modules/integrations/jira/pointField';
 import {
   JiraBoardPayloadValue,
   JiraField,
-  JiraSprintWithIssues,
+  JiraIssueGroupWithIssues,
 } from '@modules/integrations/jira/types';
 import { useTickets } from '@modules/room/hooks';
 import useStore from '@utils/store';
 import { ThemedProps } from '@utils/styles/colors/types';
+import { BACKLOG_GROUP_ID, BoardRef } from '@v4/types/issueGroup';
+import { isKanbanBoard } from '@v4/types/jira';
 
 import BoardSelection from './steps/boardSelection';
-import SprintSelection from './steps/sprintSelection';
+import GroupSelection from './steps/groupSelection';
+import PointFieldSelection from './steps/pointFieldSelection';
 import TicketReview from './steps/ticketReview';
 // import ModeSelection, { ImportModeSelection } from './steps/modeSelection';
 
@@ -160,14 +164,41 @@ const ListContentWrapper = styled.div`
 
 const QueueModal = () => {
   const defaultBoard = useStore(({ preferences }) => preferences?.jiraPreferences?.defaultBoard);
+  const jiraPreferences = useStore(({ preferences }) => preferences?.jiraPreferences);
   const { getPointFieldFromBoardId } = useJira();
   const { queue } = useTickets();
   // const [ importModeSelection, setImportModeSelection ] = useState<ImportModeSelection | null>(null);
   const [overrideBoard, setOverrideBoard] = useState<JiraBoardPayloadValue | null>(null);
-  const [selectedSprint, setSelectedSprint] = useState<JiraSprintWithIssues | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<JiraIssueGroupWithIssues | null>(null);
   const [showOverrideUI, setShowOverrideUI] = useState<boolean>(false);
   const [pointField, setPointField] = useState<JiraField | null>(null);
+  // `pointFieldResolution` is read below to tell "no field yet" apart from "asked and
+  // genuinely unresolvable" — the latter is what triggers the point-field picker.
+  const [pointFieldResolution, setPointFieldResolution] = useState<PointFieldResolution | null>(null);
   const isAnyBoardSelected = useMemo(() => !!defaultBoard || !!overrideBoard, [defaultBoard, overrideBoard]);
+
+  const board = useMemo<BoardRef | undefined>(() => {
+    const selected = overrideBoard ?? defaultBoard;
+    if (!selected) return undefined;
+
+    return {
+      id: selected.id,
+      type: selected.type,
+    };
+  }, [overrideBoard, defaultBoard]);
+
+  // Before a group is picked, `board.type` is the only signal available here (the
+  // fetched groups that `GroupSelection` uses to disambiguate legacy Kanban boards
+  // aren't surfaced up to this component). Once a group IS picked, prefer its own
+  // name over a hardcoded 'Backlog' — a Kanban board with backlog disabled reports
+  // its group as 'Board', not 'Backlog'.
+  const groupLabel = useMemo(() => {
+    if (selectedGroup) {
+      return selectedGroup.id === BACKLOG_GROUP_ID ? selectedGroup.name : 'Sprint';
+    }
+
+    return isKanbanBoard(board?.type) ? 'Backlog' : 'Sprint';
+  }, [selectedGroup, board]);
 
   const selectionContent = useMemo(() => {
     if ((!isAnyBoardSelected) || showOverrideUI) {
@@ -181,46 +212,59 @@ const QueueModal = () => {
       );
     }
 
-    if (!selectedSprint && pointField) {
+    if (!pointField && pointFieldResolution?.source === 'unresolved') {
+      return <PointFieldSelection onSelect={setPointField} />;
+    }
+
+    if (!selectedGroup && pointField) {
       return (
-        <SprintSelection
+        <GroupSelection
           existingQueue={queue}
-          boardId={overrideBoard?.id || defaultBoard?.id}
-          setSprint={setSelectedSprint}
+          board={board}
+          setGroup={setSelectedGroup}
           pointField={pointField}
         />
       );
     }
 
-    if (selectedSprint?.issues && pointField) {
+    if (selectedGroup?.issues && pointField && board) {
       return (
         <TicketReview
           existingQueue={queue}
-          issues={selectedSprint.issues}
+          issues={selectedGroup.issues}
           pointField={pointField}
-          selectedBoardId={overrideBoard?.id || defaultBoard!.id}
+          selectedBoardId={board.id}
         />
       );
     }
   }, [
     isAnyBoardSelected,
     showOverrideUI,
-    selectedSprint,
+    selectedGroup,
     pointField,
+    pointFieldResolution,
     defaultBoard,
     queue,
-    overrideBoard?.id,
+    board,
   ]);
 
   useEffect(() => {
-    if (isAnyBoardSelected) {
-      getPointFieldFromBoardId(overrideBoard?.id || defaultBoard!.id)
-        .then((pointField) => setPointField(pointField ?? null));
+    if (isAnyBoardSelected && board) {
+      getPointFieldFromBoardId(board.id, jiraPreferences?.pointField)
+        .then((resolution) => {
+          setPointFieldResolution(resolution);
+          setPointField(resolution.field);
+        })
+        .catch((error) => {
+          console.error('Error resolving point field:', error);
+          setPointField(null);
+          setPointFieldResolution(null);
+        });
     }
   }, [
-    defaultBoard,
+    board,
     isAnyBoardSelected,
-    overrideBoard?.id,
+    jiraPreferences?.pointField,
   ]);
 
   return (
@@ -232,7 +276,7 @@ const QueueModal = () => {
             onClick={() => {
               setShowOverrideUI(true);
               setOverrideBoard(null);
-              setSelectedSprint(null);
+              setSelectedGroup(null);
             }}
             selectionComplete={(isAnyBoardSelected) && !showOverrideUI}
           >
@@ -254,7 +298,7 @@ const QueueModal = () => {
               <p
                 onClick={() => {
                   setOverrideBoard(null);
-                  setSelectedSprint(null);
+                  setSelectedGroup(null);
                 }}
               >
                 Revert to default board
@@ -264,19 +308,19 @@ const QueueModal = () => {
           </RevertWrapper>
         </ConfigOptionWrapper>
         <ConfigOptionWrapper>
-          <p>Sprint</p>
+          <p>{groupLabel}</p>
           <ConfigOption
-            onClick={() => setSelectedSprint(null)}
-            selectionComplete={!!selectedSprint}
+            onClick={() => setSelectedGroup(null)}
+            selectionComplete={!!selectedGroup}
           >
             <ConfigOptionLabel>
-              {selectedSprint?.name ?? 'Pending sprint selection'}
+              {selectedGroup?.name ?? 'Pending selection'}
             </ConfigOptionLabel>
-            {selectedSprint && (
+            {selectedGroup && (
               <ConfigOptionEditIcon>
                 <EditIcon
                   onClick={() => {
-                    setSelectedSprint(null);
+                    setSelectedGroup(null);
                   }}
                 />
               </ConfigOptionEditIcon>

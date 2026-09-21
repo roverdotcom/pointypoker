@@ -1,3 +1,5 @@
+import { IssueGroup } from '@v4/types/issueGroup';
+import { BoardType } from '@v4/types/jira';
 import { QueuedTicket, Ticket } from '@yappy/types/legacy/room';
 
 /**
@@ -42,6 +44,7 @@ export type JiraBoardPayloadValue = {
   id: number;
   name: string;
   self: string;
+  type?: BoardType;
 };
 
 export type JiraBoard = {
@@ -51,7 +54,7 @@ export type JiraBoard = {
 };
 
 export type JiraBoardConfig = {
-  estimation: {
+  estimation?: {
     field: {
       displayName: string;
       fieldId: string;
@@ -60,6 +63,7 @@ export type JiraBoardConfig = {
   };
   name: string;
   id: number;
+  type?: string;
 };
 
 /**
@@ -107,7 +111,7 @@ export type JiraIssueSearchPayload = {
   key: string;
   fields: {
     [key: string]: any;
-    sprint: JiraSprint;
+    sprint?: JiraSprint;
     issuetype: IssueType;
     summary: string;
   }
@@ -117,7 +121,7 @@ export type JiraIssueSearchPayload = {
 // Tickets are issues that are in this app's context.
 type JiraTicketBase = {
   url: string;
-  sprint: JiraSprint;
+  sprint?: JiraSprint;
   estimationFieldId: string;
   type: IssueType
   wasPointed?: boolean;
@@ -145,8 +149,8 @@ export type JiraSprint = {
   goal: string
 };
 
-export type JiraSprintWithIssues = JiraSprint & {
-  issues?: JiraIssueSearchPayload[];
+export type JiraIssueGroupWithIssues = IssueGroup & {
+  issues: JiraIssueSearchPayload[];
 };
 
 /**
