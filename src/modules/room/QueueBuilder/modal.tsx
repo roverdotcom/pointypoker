@@ -20,6 +20,7 @@ import { useTickets } from '@modules/room/hooks';
 import useStore from '@utils/store';
 import { ThemedProps } from '@utils/styles/colors/types';
 import { BACKLOG_GROUP_ID, BoardRef } from '@v4/types/issueGroup';
+import { isKanbanBoard } from '@v4/types/jira';
 
 import BoardSelection from './steps/boardSelection';
 import GroupSelection from './steps/groupSelection';
@@ -186,6 +187,19 @@ const QueueModal = () => {
     };
   }, [overrideBoard, defaultBoard]);
 
+  // Before a group is picked, `board.type` is the only signal available here (the
+  // fetched groups that `GroupSelection` uses to disambiguate legacy Kanban boards
+  // aren't surfaced up to this component). Once a group IS picked, prefer its own
+  // name over a hardcoded 'Backlog' — a Kanban board with backlog disabled reports
+  // its group as 'Board', not 'Backlog'.
+  const groupLabel = useMemo(() => {
+    if (selectedGroup) {
+      return selectedGroup.id === BACKLOG_GROUP_ID ? selectedGroup.name : 'Sprint';
+    }
+
+    return isKanbanBoard(board?.type) ? 'Backlog' : 'Sprint';
+  }, [selectedGroup, board]);
+
   const selectionContent = useMemo(() => {
     if ((!isAnyBoardSelected) || showOverrideUI) {
       return (
@@ -213,13 +227,13 @@ const QueueModal = () => {
       );
     }
 
-    if (selectedGroup?.issues && pointField) {
+    if (selectedGroup?.issues && pointField && board) {
       return (
         <TicketReview
           existingQueue={queue}
           issues={selectedGroup.issues}
           pointField={pointField}
-          selectedBoardId={board!.id}
+          selectedBoardId={board.id}
         />
       );
     }
@@ -294,7 +308,7 @@ const QueueModal = () => {
           </RevertWrapper>
         </ConfigOptionWrapper>
         <ConfigOptionWrapper>
-          <p>{selectedGroup?.id === BACKLOG_GROUP_ID ? 'Backlog' : 'Sprint'}</p>
+          <p>{groupLabel}</p>
           <ConfigOption
             onClick={() => setSelectedGroup(null)}
             selectionComplete={!!selectedGroup}

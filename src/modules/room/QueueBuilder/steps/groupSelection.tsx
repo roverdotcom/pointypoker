@@ -309,6 +309,14 @@ const GroupSelection = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [issueCount]);
 
+  // `board.type` may still be undefined for a stored board saved before board-type
+  // persistence existed — `getIssueGroupsForBoard` recovers the real type from board
+  // configuration internally, but that resolution never makes it back into the
+  // `board` prop. Reading it off the already-fetched groups (a Kanban board's single
+  // group always carries the synthetic `BACKLOG_GROUP_ID`) reflects what was actually
+  // fetched; `boardType` is kept only as a fallback for the brief pre-fetch instant.
+  const isKanbanGroup = groupData?.some((group) => group.id === BACKLOG_GROUP_ID) ?? isKanbanBoard(boardType);
+
   const groupOptions = useMemo(() => groupData?.map((group, delayFactor) => {
     const apiIssues = groupedIssues?.find((entry) => entry.groupId === group.id)?.issues ?? [];
     const issuesInQueue = existingQueue.filter((ticket) => {
@@ -345,7 +353,7 @@ const GroupSelection = ({
           pointContainerMessage = `${issueCountDisplay} new unpointed ticket${ issuesInQueue.length === 1 ? '' : 's' }`;
         } else {
           // Issues in queue, but they all match issues in the group
-          pointContainerMessage = 'Sprint already in queue';
+          pointContainerMessage = isKanbanGroup ? 'Backlog already in queue' : 'Sprint already in queue';
         }
       } else if (newIssueCount > 0) {
         // No issues in queue, issues in the group
@@ -378,17 +386,11 @@ const GroupSelection = ({
     groupData,
     groupedIssues,
     existingQueue,
+    isKanbanGroup,
     isLoading,
     setGroup,
   ]);
 
-  // `board.type` may still be undefined for a stored board saved before board-type
-  // persistence existed — `getIssueGroupsForBoard` recovers the real type from board
-  // configuration internally, but that resolution never makes it back into the
-  // `board` prop. Reading it off the already-fetched groups (a Kanban board's single
-  // group always carries the synthetic `BACKLOG_GROUP_ID`) reflects what was actually
-  // fetched; `boardType` is kept only as a fallback for the brief pre-fetch instant.
-  const isKanbanGroup = groupData?.some((group) => group.id === BACKLOG_GROUP_ID) ?? isKanbanBoard(boardType);
   const stepHeading = isKanbanGroup ? 'Select issues to import' : 'Select a sprint';
 
   const loadingIcon = useMemo(() => groupData ? (

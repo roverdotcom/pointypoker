@@ -95,11 +95,13 @@ const Title = ({ shouldFocus, value }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const {
     defaultBoard,
+    preferredPointField,
     setIsFocused,
     preferredPointScheme,
   } = useStore(({ preferences, setTitleInputFocus }) =>
     ({
       defaultBoard: preferences?.jiraPreferences?.defaultBoard,
+      preferredPointField: preferences?.jiraPreferences?.pointField,
       preferredPointScheme: preferences?.pointScheme,
       setIsFocused: setTitleInputFocus,
     }) );
@@ -121,7 +123,7 @@ const Title = ({ shouldFocus, value }: Props) => {
       // Returning early here would silently create no ticket and leave the
       // input spinning, because the ticket is constructed below this call.
       const pointField = boardId
-        ? (await getPointFieldFromBoardId(boardId)).field
+        ? (await getPointFieldFromBoardId(boardId, preferredPointField)).field
         : null;
       const newTicket: QueuedJiraTicket = {
         estimationFieldId: pointField?.id ?? '',
@@ -142,6 +144,7 @@ const Title = ({ shouldFocus, value }: Props) => {
   }, [
     defaultBoard,
     getIssueDetail,
+    preferredPointField,
     preferredPointScheme,
     getPointFieldFromBoardId,
     buildJiraUrl,
