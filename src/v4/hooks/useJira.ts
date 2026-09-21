@@ -9,10 +9,20 @@ import { getJiraJsFixtures } from '@utils/jiraFixtures';
 import useStore from '@utils/store';
 import { useJiraContext } from '@v4/providers/JiraProvider';
 import {
+  BACKLOG_GROUP_ID,
+  BacklogSource,
+  BoardRef,
+  buildBacklogGroup,
+  GroupedIssuesPage,
+  groupScrumIssues,
+  IssueGroup,
+} from '@v4/types/issueGroup';
+import {
   BoardOption,
   BoardType,
   ImportableIssue,
   IssueDetail,
+  isKanbanBoard,
   PointField,
   SprintOption,
 } from '@v4/types/jira';
@@ -60,6 +70,44 @@ type RawIssue = {
     summary?: string;
   };
 };
+
+/** One page of unmapped issues, keeping the paging metadata callers need. */
+type RawIssuePage = {
+  issues: RawIssue[];
+  maxResults: number;
+  startAt: number;
+  total: number;
+};
+
+/** One Kanban page plus the source that produced it, for threading forward. */
+type KanbanIssueFetch = {
+  page: RawIssuePage;
+  source: BacklogSource;
+};
+
+type RawSearchResults = {
+  issues?: unknown[];
+  maxResults?: number;
+  startAt?: number;
+  total?: number;
+};
+
+const ISSUE_FIELDS = [
+  'id',
+  'key',
+  'sprint',
+  'summary',
+  'issuetype',
+  'components',
+  'team',
+];
+
+const toRawIssuePage = (result: RawSearchResults, startAt: number): RawIssuePage => ({
+  issues: (result.issues ?? []) as RawIssue[],
+  maxResults: result.maxResults ?? 100,
+  startAt: result.startAt ?? startAt,
+  total: result.total ?? (result.issues ?? []).length,
+});
 
 const toBoardOption = (board: RawBoard): BoardOption => ({
   id: board.id ?? 0,
@@ -252,32 +300,29 @@ const useJira = () => {
     fixtureScenario,
   ]);
 
-  const getIssuesForBoard = useCallback(async (
+  /**
+   * Raw fetchers preserve paging metadata and the unflattened `fields.sprint`,
+   * because grouping runs on raw issues before `toIssueDetail` maps them.
+   */
+  const fetchRawBoardIssues = useCallback(async (
     boardId: number,
     pointField?: PointField | null,
     startAt = 0,
-  ): Promise<ImportableIssue[]> => {
+    jqlOverride = 'Sprint IN futureSprints() AND resolution IS EMPTY',
+  ): Promise<RawIssuePage> => {
     if (useFixtures) {
       const result = await getJiraJsFixtures(fixtureScenario).getIssuesForBoard(
         boardId,
         pointField,
         startAt,
       );
-      return (result.issues ?? []).map((issue) => toIssueDetail(issue as RawIssue, baseUrl));
+      return toRawIssuePage(result, startAt);
     }
 
     if (!client) throw new Error('Jira client not initialized');
 
-    const fields = [
-      'id',
-      'key',
-      'sprint',
-      'summary',
-      'issuetype',
-      'components',
-      'team',
-    ];
-    let jql = 'Sprint IN futureSprints() AND resolution IS EMPTY';
+    const fields = [...ISSUE_FIELDS];
+    let jql = jqlOverride;
 
     if (pointField) {
       jql += ` AND ${pointField.name} = EMPTY`;
@@ -292,39 +337,30 @@ const useJira = () => {
       startAt,
     });
 
-    return (result.issues ?? []).map((issue) => toIssueDetail(issue as RawIssue, baseUrl));
+    return toRawIssuePage(result, startAt);
   }, [
     client,
-    baseUrl,
     useFixtures,
     fixtureScenario,
   ]);
 
-  const getBacklogForBoard = useCallback(async (
+  const fetchRawBacklog = useCallback(async (
     boardId: number,
     pointField?: PointField | null,
     startAt = 0,
-  ): Promise<ImportableIssue[]> => {
+  ): Promise<RawIssuePage> => {
     if (useFixtures) {
       const result = await getJiraJsFixtures(fixtureScenario).getBacklogForBoard(
         boardId,
         pointField,
         startAt,
       );
-      return (result.issues ?? []).map((issue) => toIssueDetail(issue as RawIssue, baseUrl));
+      return toRawIssuePage(result, startAt);
     }
 
     if (!client) throw new Error('Jira client not initialized');
 
-    const fields = [
-      'id',
-      'key',
-      'sprint',
-      'summary',
-      'issuetype',
-      'components',
-      'team',
-    ];
+    const fields = [...ISSUE_FIELDS];
     let jql = 'resolution IS EMPTY';
 
     if (pointField) {
@@ -340,12 +376,172 @@ const useJira = () => {
       startAt,
     });
 
-    return (result.issues ?? []).map((issue) => toIssueDetail(issue as RawIssue, baseUrl));
+    return toRawIssuePage(result, startAt);
   }, [
     client,
-    baseUrl,
     useFixtures,
     fixtureScenario,
+  ]);
+
+  const getIssuesForBoard = useCallback(async (
+    boardId: number,
+    pointField?: PointField | null,
+    startAt = 0,
+  ): Promise<ImportableIssue[]> => {
+    const page = await fetchRawBoardIssues(
+      boardId,
+      pointField,
+      startAt,
+    );
+
+    return page.issues.map((issue) => toIssueDetail(issue, baseUrl));
+  }, [fetchRawBoardIssues, baseUrl]);
+
+  const getBacklogForBoard = useCallback(async (
+    boardId: number,
+    pointField?: PointField | null,
+    startAt = 0,
+  ): Promise<ImportableIssue[]> => {
+    const page = await fetchRawBacklog(
+      boardId,
+      pointField,
+      startAt,
+    );
+
+    return page.issues.map((issue) => toIssueDetail(issue, baseUrl));
+  }, [fetchRawBacklog, baseUrl]);
+
+  /**
+   * Board type for a board reference that may predate type persistence.
+   * Board configuration carries the type, so one extra call recovers it.
+   */
+  const resolveBoardType = useCallback(async (board: BoardRef): Promise<BoardType> => {
+    if (board.type) return board.type;
+
+    try {
+      const config = await getBoardConfiguration(board.id);
+      return (config.type as BoardType | undefined) ?? 'scrum';
+    } catch (error) {
+      console.error('Error resolving board type:', error);
+      return 'scrum';
+    }
+  }, [getBoardConfiguration]);
+
+  /**
+   * Backlog first; boards with the backlog feature disabled fall back to columns.
+   * Same rule as the legacy client: decide the source ONCE from an unfiltered
+   * probe, then thread it through subsequent pages.
+   */
+  const fetchKanbanIssues = useCallback(async (
+    boardId: number,
+    pointField?: PointField | null,
+    startAt = 0,
+    knownSource?: BacklogSource,
+  ): Promise<KanbanIssueFetch> => {
+    const source = knownSource
+      ?? ((await fetchRawBacklog(
+        boardId,
+        null,
+        0,
+      )).total > 0 ? 'backlog' : 'board');
+
+    const page = source === 'backlog'
+      ? await fetchRawBacklog(
+        boardId,
+        pointField,
+        startAt,
+      )
+      : await fetchRawBoardIssues(
+        boardId,
+        pointField,
+        startAt,
+        'resolution IS EMPTY',
+      );
+
+    return {
+      page,
+      source,
+    };
+  }, [fetchRawBacklog, fetchRawBoardIssues]);
+
+  /** Scrum grouping runs on raw issues, before the DTO flattens `fields.sprint`. */
+  const getGroupedScrumIssues = useCallback(async (
+    boardId: number,
+    pointField?: PointField | null,
+    startAt = 0,
+  ): Promise<GroupedIssuesPage<ImportableIssue>> => {
+    const page = await fetchRawBoardIssues(
+      boardId,
+      pointField,
+      startAt,
+    );
+
+    return {
+      groups: groupScrumIssues(page.issues).map(({ groupId, issues }) => ({
+        groupId,
+        issues: issues.map((issue) => toIssueDetail(issue, baseUrl)),
+      })),
+      maxResults: page.maxResults,
+      startAt: page.startAt,
+      total: page.total,
+    };
+  }, [fetchRawBoardIssues, baseUrl]);
+
+  const getIssueGroupsForBoard = useCallback(async (board: BoardRef): Promise<IssueGroup[]> => {
+    const boardType = await resolveBoardType(board);
+
+    if (isKanbanBoard(boardType)) {
+      const { source } = await fetchKanbanIssues(board.id, null);
+      return [buildBacklogGroup(source)];
+    }
+
+    return getSprintsForBoard(board.id);
+  }, [
+    resolveBoardType,
+    fetchKanbanIssues,
+    getSprintsForBoard,
+  ]);
+
+  const getImportableIssues = useCallback(async (
+    board: BoardRef,
+    pointField?: PointField | null,
+    startAt = 0,
+    knownSource?: BacklogSource,
+  ): Promise<GroupedIssuesPage<ImportableIssue>> => {
+    const boardType = await resolveBoardType(board);
+
+    if (isKanbanBoard(boardType)) {
+      const { page, source } = await fetchKanbanIssues(
+        board.id,
+        pointField,
+        startAt,
+        knownSource,
+      );
+
+      return {
+        groups: [
+          {
+            groupId: BACKLOG_GROUP_ID,
+            issues: page.issues.map((issue) => toIssueDetail(issue, baseUrl)),
+          },
+        ],
+        maxResults: page.maxResults,
+        source,
+        startAt: page.startAt,
+        total: page.total,
+      };
+    }
+
+    return getGroupedScrumIssues(
+      board.id,
+      pointField,
+      startAt,
+    );
+  }, [
+    resolveBoardType,
+    fetchKanbanIssues,
+    getGroupedScrumIssues,
+    baseUrl,
   ]);
 
   const getIssueDetail = useCallback(async (key: string,pointField?: PointField | null): Promise<IssueDetail> => {
@@ -421,7 +617,9 @@ const useJira = () => {
     connectWithCode,
     getBacklogForBoard,
     getBoards,
+    getImportableIssues,
     getIssueDetail,
+    getIssueGroupsForBoard,
     getIssuesForBoard,
     getPointFieldFromBoardId,
     getSprintsForBoard,

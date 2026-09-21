@@ -39,6 +39,11 @@ describe('kanban fixture scenarios', () => {
     expect(config.type).toBe('kanban');
   });
 
+  it('reports kanban type through configuration for an untyped board', async () => {
+    const config = await getLegacyFixtures('kanban-backlog').getBoardConfiguration(4);
+    expect(config.type).toBe('kanban');
+  });
+
   it('omits the estimation block for the no-estimation scenario', async () => {
     const config = await getLegacyFixtures('kanban-no-estimation').getBoardConfiguration(4);
     expect(config.estimation).toBeUndefined();

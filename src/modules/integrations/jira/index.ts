@@ -6,6 +6,16 @@ import createApiClient, { getJiraApiClient } from '@utils/axios';
 import { getLegacyFixtures } from '@utils/jiraFixtures';
 import { blobToBase64 } from '@utils/room';
 import useStore from '@utils/store';
+import {
+  BACKLOG_GROUP_ID,
+  BacklogSource,
+  BoardRef,
+  buildBacklogGroup,
+  GroupedIssuesPage,
+  groupScrumIssues,
+  IssueGroup,
+} from '@v4/types/issueGroup';
+import { BoardType, isKanbanBoard } from '@v4/types/jira';
 
 import {
   InitialAuth,
@@ -17,6 +27,7 @@ import {
   JiraFieldPayload,
   JiraIssuesDataPayload,
   JiraIssueSearchPayload,
+  JiraSprint,
   RefreshAuth,
 } from './types';
 import {
@@ -36,6 +47,12 @@ import {
  */
 
 const API_URL = `https://${ JIRA_SUBDOMAINS.API }.${ ATLASSIAN_URL }`;
+
+/** One Kanban page plus the source that produced it, for threading forward. */
+type KanbanIssueFetch = {
+  payload: JiraIssuesDataPayload;
+  source: BacklogSource;
+};
 
 const useJira = () => {
   const { userId } = useAuthorizedUser();
@@ -291,6 +308,7 @@ const useJira = () => {
     boardId: string | number,
     pointField?: JiraField | null,
     startAt = 0,
+    jqlOverride = 'Sprint IN futureSprints() AND resolution IS EMPTY',
   ) => {
     if (fixtures) return fixtures.getIssuesForBoard(
       boardId,
@@ -314,7 +332,7 @@ const useJira = () => {
       'components',
       'team',
     ];
-    let jql = 'Sprint IN futureSprints() AND resolution IS EMPTY';
+    let jql = jqlOverride;
 
     if (pointField) {
       jql += ` AND ${ pointField.name } = EMPTY`;
@@ -387,6 +405,148 @@ const useJira = () => {
       .catch((error) => {
         throw new Error(error);
       });
+  };
+
+  /**
+   * Board type for a board reference that may predate type persistence.
+   * Board configuration carries the type, so one extra call recovers it.
+   */
+  const resolveBoardType = async (board: BoardRef): Promise<BoardType> => {
+    if (board.type) return board.type;
+
+    try {
+      const config = await getBoardConfiguration(board.id);
+      return (config.type as BoardType | undefined) ?? 'scrum';
+    } catch (error) {
+      console.error('Error resolving board type:', error);
+      return 'scrum';
+    }
+  };
+
+  /**
+   * Kanban issue source. Boards with the backlog feature disabled return an
+   * empty backlog and keep all work in columns, so fall back to board issues.
+   *
+   * The fallback decision is made ONCE, on the first page, using the unfiltered
+   * backlog total. Deciding per page would flip to board issues on page 2 of a
+   * 100-item backlog; deciding after the `pointField = EMPTY` filter would flip
+   * whenever a board's backlog happens to be fully pointed.
+   */
+  const fetchKanbanIssues = async (
+    board: BoardRef,
+    pointField?: JiraField | null,
+    startAt = 0,
+    knownSource?: BacklogSource,
+  ): Promise<KanbanIssueFetch> => {
+    if (knownSource) {
+      const payload = knownSource === 'backlog'
+        ? await getBacklogForBoard(
+          board.id,
+          pointField,
+          startAt,
+        )
+        : await getIssuesForBoard(
+          board.id,
+          pointField,
+          startAt,
+          'resolution IS EMPTY',
+        );
+
+      return {
+        payload,
+        source: knownSource,
+      };
+    }
+
+    // Unfiltered probe: does this board have a backlog at all?
+    const probe = await getBacklogForBoard(
+      board.id,
+      null,
+      0,
+    );
+
+    if (probe.total > 0) {
+      return {
+        payload: await getBacklogForBoard(
+          board.id,
+          pointField,
+          startAt,
+        ),
+        source: 'backlog',
+      };
+    }
+
+    return {
+      payload: await getIssuesForBoard(
+        board.id,
+        pointField,
+        startAt,
+        'resolution IS EMPTY',
+      ),
+      source: 'board',
+    };
+  };
+
+  const getIssueGroupsForBoard = async (board: BoardRef): Promise<IssueGroup[]> => {
+    const boardType = await resolveBoardType(board);
+
+    if (isKanbanBoard(boardType)) {
+      // The label depends on which call yields issues, so resolve it there and
+      // reuse the same source here.
+      const { source } = await fetchKanbanIssues(board, null);
+      return [buildBacklogGroup(source)];
+    }
+
+    const sprints = await getSprintsForBoard(board.id);
+    return (sprints.values as JiraSprint[]).map((sprint) => ({
+      id: sprint.id,
+      name: sprint.name,
+      state: sprint.state,
+    }));
+  };
+
+  const getImportableIssues = async (
+    board: BoardRef,
+    pointField?: JiraField | null,
+    startAt = 0,
+    knownSource?: BacklogSource,
+  ): Promise<GroupedIssuesPage<JiraIssueSearchPayload>> => {
+    const boardType = await resolveBoardType(board);
+
+    if (isKanbanBoard(boardType)) {
+      const { payload, source } = await fetchKanbanIssues(
+        board,
+        pointField,
+        startAt,
+        knownSource,
+      );
+
+      return {
+        groups: [
+          {
+            groupId: BACKLOG_GROUP_ID,
+            issues: payload.issues,
+          },
+        ],
+        maxResults: payload.maxResults,
+        source,
+        startAt: payload.startAt,
+        total: payload.total,
+      };
+    }
+
+    const result = await getIssuesForBoard(
+      board.id,
+      pointField,
+      startAt,
+    );
+
+    return {
+      groups: groupScrumIssues(result.issues),
+      maxResults: result.maxResults,
+      startAt: result.startAt,
+      total: result.total,
+    };
   };
 
   const getIssueDetail = async (key: string, pointField?: JiraField | null) => {
@@ -512,8 +672,10 @@ const useJira = () => {
     getBacklogForBoard,
     getBoardConfiguration,
     getBoards,
+    getImportableIssues,
     getIssueDetail,
     getIssueFields,
+    getIssueGroupsForBoard,
     getIssuesForBoard,
     getPointFieldFromBoardId,
     getSprintsForBoard,
