@@ -29,6 +29,9 @@ jobs:
       run: yarn tsc
       continue-on-error: false
 
+    - name: Unit tests
+      run: yarn test:unit
+
     - name: Build project
       run: yarn build
       env:
