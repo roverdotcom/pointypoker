@@ -223,6 +223,7 @@ const QueueModal = () => {
           board={board}
           setGroup={setSelectedGroup}
           pointField={pointField}
+          pointFieldSource={pointFieldResolution?.source}
         />
       );
     }

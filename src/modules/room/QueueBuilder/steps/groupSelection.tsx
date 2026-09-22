@@ -17,6 +17,7 @@ import {
   JiraIssueGroupWithIssues,
   JiraIssueSearchPayload,
 } from '@modules/integrations/jira/types';
+import { PointFieldResolution } from '@modules/integrations/jira/pointField';
 import { usePrevious } from '@utils';
 import { ThemeColorKey, ThemedProps } from '@utils/styles/colors/types';
 import {
@@ -36,6 +37,7 @@ type Props = {
   existingQueue: Room[ 'ticketQueue' ];
   setGroup: (groupData: JiraIssueGroupWithIssues) => void;
   pointField: JiraField;
+  pointFieldSource?: PointFieldResolution['source'];
 };
 
 type IssuesByGroup = GroupedIssues<JiraIssueSearchPayload>;
@@ -143,6 +145,17 @@ const GroupOption = styled.div<GroupOptionProps>`
     border 0.25s ease-out;
 `;
 
+const HelperText = styled.p`
+  ${({ theme }: ThemedProps) => css`
+    color: ${ theme.greyscale.accent11 };
+  `}
+
+  font-size: 0.75rem;
+  margin: 0 0 0.5rem;
+  text-align: center;
+  width: 80%;
+`;
+
 const EmptyStateMessage = styled.p`
   ${({ theme }: ThemedProps) => css`
     color: ${ theme.greyscale.accent11 };
@@ -183,11 +196,24 @@ const PointContainer = styled.span<GroupOptionProps>`
     border 0.125s ease-out;
 `;
 
+/**
+ * Which step of the resolution ladder produced the point field. Shown because a
+ * silently-resolved field is the one thing in this flow a user cannot otherwise
+ * see, and picking the wrong one looks identical to having nothing to point.
+ */
+const POINT_FIELD_SOURCE_LABELS: Record<PointFieldResolution['source'], string> = {
+  config: 'from board settings',
+  detected: 'detected on this site',
+  preference: 'your saved choice',
+  unresolved: '',
+};
+
 const GroupSelection = ({
   board,
   existingQueue,
   setGroup,
   pointField,
+  pointFieldSource,
 }: Props) => {
   const boardId = board?.id;
   const boardType = board?.type;
@@ -408,6 +434,23 @@ const GroupSelection = ({
     <LoadingWrapper size={2}><LoadingIcon /></LoadingWrapper>
   ), [groupData, stepHeading]);
 
+  const pointFieldNote = useMemo(() => {
+    if (!groupData) return null;
+
+    const sourceLabel = pointFieldSource ? POINT_FIELD_SOURCE_LABELS[pointFieldSource] : '';
+
+    return (
+      <HelperText>
+        Unpointed means an empty <strong>{pointField.name}</strong>
+        {sourceLabel ? ` (${sourceLabel})` : ''}
+      </HelperText>
+    );
+  }, [
+    groupData,
+    pointField,
+    pointFieldSource,
+  ]);
+
   // An empty Kanban backlog resolves to a single group with no issues; without
   // an explicit message the user is left staring at zero-count rows.
   const emptyState = useMemo(() => {
@@ -436,6 +479,7 @@ const GroupSelection = ({
       <InformationWrapper>
         {loadingIcon}
       </InformationWrapper>
+      {pointFieldNote}
       <GroupOptionWrapper>
         {groupOptions}
         {emptyState}
