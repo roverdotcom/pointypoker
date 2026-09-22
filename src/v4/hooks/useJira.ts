@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 
+import { buildUnpointedClause } from '@modules/integrations/jira/jql';
 import { resolveBoardPointField } from '@modules/integrations/jira/pointField';
 import {
   JiraAuthData,
@@ -326,7 +327,7 @@ const useJira = () => {
     let jql = jqlOverride;
 
     if (pointField) {
-      jql += ` AND ${pointField.name} = EMPTY`;
+      jql += ` AND ${buildUnpointedClause(pointField)}`;
       fields.push(pointField.id);
     }
 
@@ -365,7 +366,7 @@ const useJira = () => {
     let jql = 'resolution IS EMPTY';
 
     if (pointField) {
-      jql += ` AND ${pointField.name} = EMPTY`;
+      jql += ` AND ${buildUnpointedClause(pointField)}`;
       fields.push(pointField.id);
     }
 

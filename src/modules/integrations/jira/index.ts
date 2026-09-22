@@ -17,6 +17,7 @@ import {
 } from '@v4/types/issueGroup';
 import { BoardType, isKanbanBoard } from '@v4/types/jira';
 
+import { buildUnpointedClause } from './jql';
 import { resolveBoardPointField } from './pointField';
 import {
   InitialAuth,
@@ -336,7 +337,7 @@ const useJira = () => {
     let jql = jqlOverride;
 
     if (pointField) {
-      jql += ` AND ${ pointField.name } = EMPTY`;
+      jql += ` AND ${ buildUnpointedClause(pointField) }`;
       fields.push(pointField.id);
     }
 
@@ -388,7 +389,7 @@ const useJira = () => {
     let jql = 'resolution IS EMPTY';
 
     if (pointField) {
-      jql += ` AND ${ pointField.name } = EMPTY`;
+      jql += ` AND ${ buildUnpointedClause(pointField) }`;
       fields.push(pointField.id);
     }
 

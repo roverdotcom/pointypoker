@@ -195,6 +195,10 @@ const GroupSelection = ({
   const [isLoading, setIsLoading] = useState(false);
   const [groupData, setGroupData] = useState<IssueGroup[] | null>(null);
   const [groupedIssues, setGroupedIssues] = useState<GroupedIssues<JiraIssueSearchPayload> | null>(null);
+  // A failed fetch and an empty board both leave zero issues on screen. Without
+  // this flag the UI reports "No unpointed tickets" for a Jira error, which is a
+  // wrong answer rather than a missing one.
+  const [hasLoadError, setHasLoadError] = useState(false);
   const {
     getAvatars,
     getImportableIssues,
@@ -211,8 +215,8 @@ const GroupSelection = ({
     try {
       setGroupData(await getIssueGroupsForBoard(board));
     } catch (error) {
-      // TODO: Handle error in the future
       console.error('Error fetching issue groups:', error);
+      setHasLoadError(true);
     }
     // `board` is often a fresh object literal, so key this callback on the board's
     // scalar fields instead. Both `id` and `type` are listed: a board whose type
@@ -276,6 +280,7 @@ const GroupSelection = ({
       }
     } catch (error) {
       console.error('Error fetching issues:', error);
+      setHasLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -293,6 +298,7 @@ const GroupSelection = ({
     if (boardId && previousBoardId !== boardId) {
       setGroupData(null);
       setGroupedIssues(null);
+      setHasLoadError(false);
       handleFetchGroupData();
       handleFetchIssueData();
     }
@@ -344,7 +350,9 @@ const GroupSelection = ({
 
     let pointContainerMessage: string | JSX.Element = '';
 
-    if (isLoading) {
+    if (hasLoadError && !apiIssues.length) {
+      pointContainerMessage = 'Could not load tickets';
+    } else if (isLoading) {
       pointContainerMessage = (<>{issueCountDisplay} loading tickets</>);
     } else {
       if (issuesInQueue.length) {
@@ -386,6 +394,7 @@ const GroupSelection = ({
     groupData,
     groupedIssues,
     existingQueue,
+    hasLoadError,
     isKanbanGroup,
     isLoading,
     setGroup,
@@ -402,11 +411,22 @@ const GroupSelection = ({
   // An empty Kanban backlog resolves to a single group with no issues; without
   // an explicit message the user is left staring at zero-count rows.
   const emptyState = useMemo(() => {
-    if (isLoading || !groupData || issueCount) return null;
+    if (isLoading || issueCount) return null;
+
+    if (hasLoadError) {
+      return (
+        <EmptyStateMessage>
+          Jira rejected the request for this board&apos;s issues. Check the browser console for the error.
+        </EmptyStateMessage>
+      );
+    }
+
+    if (!groupData) return null;
 
     return <EmptyStateMessage>No issues to import</EmptyStateMessage>;
   }, [
     groupData,
+    hasLoadError,
     isLoading,
     issueCount,
   ]);
