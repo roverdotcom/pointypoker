@@ -30,7 +30,7 @@
     "lodash": "^4.17.21",
     "luxon": "^3.4.4",
     "motion": "^12.23.9",
-    "node-forge": "^1.4.0",
+    "node-forge": "^1.4.3",
     "posthog-js": "^1.274.3",
     "radix-ui": "^1.4.2",
     "react": "^19.0.0",
